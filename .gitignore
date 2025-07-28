@@ -1,1 +1,3 @@
 .mops
+node_modules
+.dfx

@@ -1,0 +1,34 @@
+{
+  "name": "motoko-sdk",
+  "version": "1.0.0",
+  "description": "This can be developed in parallel with the JS SDK. It will be a Mops package.",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "vitest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/prometheus-protocol/motoko-sdk.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/prometheus-protocol/motoko-sdk/issues"
+  },
+  "homepage": "https://github.com/prometheus-protocol/motoko-sdk#readme",
+  "devDependencies": {
+    "@dfinity/agent": "^3.1.0",
+    "@dfinity/identity": "^3.1.0",
+    "@types/node": "^24.1.0",
+    "cross-fetch": "^4.1.0",
+    "dotenv": "^17.2.1",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.0"
+  }
+}

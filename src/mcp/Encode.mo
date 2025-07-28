@@ -19,46 +19,46 @@ module {
   };
 
   public func serverCapabilities(caps : Types.ServerCapabilities) : Types.JsonValue {
-    var top_level_fields : [(Text, Types.JsonValue)] = [];
+    var topLevelFields : [(Text, Types.JsonValue)] = [];
 
     // Handle the 'resources' capability
     switch (caps.resources) {
-      case (?res_caps) {
+      case (?resCaps) {
         // The capability exists, now build its inner JSON object.
-        var inner_fields : [(Text, Types.JsonValue)] = [];
+        var innerFields : [(Text, Types.JsonValue)] = [];
 
         // Only add "subscribe" if it's explicitly true.
-        if (res_caps.subscribe == ?true) {
-          inner_fields := Array.append(inner_fields, [("subscribe", Json.bool(true))]);
+        if (resCaps.subscribe == ?true) {
+          innerFields := Array.append(innerFields, [("subscribe", Json.bool(true))]);
         };
 
         // Only add "listChanged" if it's explicitly true.
-        if (res_caps.listChanged == ?true) {
-          inner_fields := Array.append(inner_fields, [("listChanged", Json.bool(true))]);
+        if (resCaps.listChanged == ?true) {
+          innerFields := Array.append(innerFields, [("listChanged", Json.bool(true))]);
         };
 
-        let resources_obj = Json.obj(inner_fields);
-        top_level_fields := Array.append(top_level_fields, [("resources", resources_obj)]);
+        let resourcesObj = Json.obj(innerFields);
+        topLevelFields := Array.append(topLevelFields, [("resources", resourcesObj)]);
       };
       case (null) { /* Do nothing if the capability is not supported */ };
     };
 
     // Handle the 'tools' capability
     switch (caps.tools) {
-      case (?tool_caps) {
-        var inner_fields : [(Text, Types.JsonValue)] = [];
-        if (tool_caps.listChanged == ?true) {
-          inner_fields := Array.append(inner_fields, [("listChanged", Json.bool(true))]);
+      case (?toolCaps) {
+        var innerFields : [(Text, Types.JsonValue)] = [];
+        if (toolCaps.listChanged == ?true) {
+          innerFields := Array.append(innerFields, [("listChanged", Json.bool(true))]);
         };
-        let tools_obj = Json.obj(inner_fields);
-        top_level_fields := Array.append(top_level_fields, [("tools", tools_obj)]);
+        let toolsObj = Json.obj(innerFields);
+        topLevelFields := Array.append(topLevelFields, [("tools", toolsObj)]);
       };
       case (null) {};
     };
 
     // We can add similar logic for `logging` and `prompts` here if needed.
 
-    return Json.obj(top_level_fields);
+    return Json.obj(topLevelFields);
   };
 
   // The main encoder for the entire `initialize` result object.
@@ -219,8 +219,8 @@ module {
     ];
 
     switch (res.structuredContent) {
-      case (?json_val) {
-        fields := Array.append(fields, [("structuredContent", json_val)]);
+      case (?jsonVal) {
+        fields := Array.append(fields, [("structuredContent", jsonVal)]);
       };
       case (null) {};
     };

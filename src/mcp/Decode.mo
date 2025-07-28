@@ -55,9 +55,9 @@ module {
   public func callToolParams(json : Types.JsonValue) : ?Types.CallToolParams {
     do ? {
       let name = Result.toOption(Json.getAsText(json, "name"))!;
-      let arguments_json = Json.get(json, "arguments")!;
+      let argsJson = Json.get(json, "arguments")!;
 
-      return ?{ name; arguments = arguments_json };
+      return ?{ name; arguments = argsJson };
     };
   };
 };

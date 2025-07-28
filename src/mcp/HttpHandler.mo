@@ -17,7 +17,7 @@ module {
   // The context object that main.mo will construct and pass to us.
   public type Context = {
     // The stateful map of active streams.
-    active_streams : Map.Map<Text, ()>;
+    active_streams : Map.Map<Text, Time.Time>;
     // The configured MCP server instance.
     mcp_server : Server.Server;
     // A reference to the public streaming callback function in main.mo.
@@ -31,7 +31,7 @@ module {
       let token_blob = Blob.fromArray(Utils.nat64ToBytes(Nat64.fromIntWrap(Time.now())));
       let token_key = BaseX.toBase64(token_blob.vals(), #standard({ includePadding = true }));
       // It modifies the state object passed in via the context.
-      Map.set(ctx.active_streams, thash, token_key, ());
+      Map.set(ctx.active_streams, thash, token_key, Time.now());
 
       let streaming_strategy : HttpTypes.StreamingStrategy = #Callback({
         // It uses the callback function passed in via the context.

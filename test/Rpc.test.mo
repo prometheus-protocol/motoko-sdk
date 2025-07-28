@@ -1,5 +1,5 @@
 import { test; suite; expect } "mo:test/async";
-import { obj; str; int; nullable; arr } "json";
+import { obj; str; int; nullable } "../src/json";
 import Text "mo:base/Text";
 
 // Modules to test
@@ -26,10 +26,6 @@ func showRequest(r : Types.JsonRpcRequest) : Text {
   "  id: " # debug_show (r.id) # "\n" #
   "}";
 };
-
-// Helpers for comparing text (used for stringified JSON).
-func showText(t : Text) : Text { t };
-func equalText(a : Text, b : Text) : Bool { a == b };
 
 // =================================================================================================
 // TEST SUITE FOR RPC MODULE

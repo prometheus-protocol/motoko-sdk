@@ -1,4 +1,7 @@
 import Json "../json";
+import Map "mo:map/Map";
+import Time "mo:base/Time";
+import Timer "mo:base/Timer";
 // This file defines the core data structures for the MCP Lifecycle.
 // Based on spec revision: 2025-06-18
 
@@ -113,5 +116,12 @@ module {
     content : [ToolResultContent];
     isError : Bool;
     structuredContent : ?JsonValue;
+  };
+
+  public type AppContext = {
+    activeStreams : Map.Map<Text, Time.Time>;
+    messageQueues : Map.Map<Text, [Text]>;
+    var cleanupTimerId : ?Timer.TimerId;
+    resourceContents : Map.Map<Text, Text>;
   };
 };

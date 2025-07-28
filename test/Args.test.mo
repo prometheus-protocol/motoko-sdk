@@ -1,13 +1,12 @@
 import Principal "mo:base/Principal";
 import Text "mo:base/Text";
 import Nat "mo:base/Nat";
-import { obj; str; int; nullable; arr } "json";
+import { obj; str; int; nullable; arr } "../src/json";
 import { test; suite; expect } "mo:test/async";
 
 // The modules we are testing and their dependencies
 import Args "../src/server/Args";
 import Decode "../src/server/Decode";
-import Types "../src/server/Types";
 
 // =================================================================================================
 // HELPER FUNCTIONS FOR TESTING
@@ -15,12 +14,6 @@ import Types "../src/server/Types";
 
 func showText(t : Text) : Text { t };
 func equalText(a : Text, b : Text) : Bool { a == b };
-
-func showNat(n : Nat) : Text { Nat.toText(n) };
-func equalNat(a : Nat, b : Nat) : Bool { a == b };
-
-func showPrincipal(p : Principal) : Text { Principal.toText(p) };
-func equalPrincipal(a : Principal, b : Principal) : Bool { a == b };
 
 // Helper for the two-argument test case
 type PrincipalNatTuple = (Principal, Nat);

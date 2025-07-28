@@ -24,12 +24,12 @@ describe('MCP Server Compliance via SDK', () => {
     url.searchParams.set('canisterId', canisterId);
     const transport = new StreamableHTTPClientTransport(url);
 
-    transport.onerror = (error) => {
-      console.error('Transport error:', error);
-    };
-    transport.onmessage = (message) => {
-      console.log('Received message:', message);
-    };
+    // transport.onerror = (error) => {
+    //   console.error('Transport error:', error);
+    // };
+    // transport.onmessage = (message) => {
+    //   console.log('Received message:', message);
+    // };
 
     // Create a new client instance.
     client = new Client({

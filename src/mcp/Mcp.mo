@@ -43,7 +43,7 @@ module {
     // --- Auto-generated MCP Handlers ---
 
     // 1. `initialize` handler
-    let initialize_handler = (
+    let initializeHandler = (
       "initialize",
       Handler.query1<Types.InitializeParams, Types.InitializeResult>(
         func(params, cb) {
@@ -78,7 +78,7 @@ module {
     );
 
     // 2. `resources/list` handler
-    let resources_list_handler = (
+    let resourcesListHandler = (
       "resources/list",
       Handler.query0<[Resource]>(
         func(cb) { cb(config.resources) },
@@ -87,7 +87,7 @@ module {
     );
 
     // 3. `resources/read` handler
-    let resources_read_handler = (
+    let resourcesReadHandler = (
       "resources/read",
       Handler.query1<Types.ReadResourceParams, Types.ReadResourceResult>(
         func(params, cb) {
@@ -121,7 +121,7 @@ module {
     );
 
     // 4. `tools/list` handler
-    let tools_list_handler = (
+    let toolsListHandler = (
       "tools/list",
       Handler.query0<Types.ListToolsResult>(
         func(cb) { cb({ tools = config.tools; nextCursor = null }) },
@@ -130,12 +130,12 @@ module {
     );
 
     // 5. `tools/call` handler (with its dispatcher)
-    let tool_dispatcher = Map.fromIter<Text, ToolFn>(config.toolImplementations.vals(), thash);
-    let tools_call_handler = (
+    let toolDispatcher = Map.fromIter<Text, ToolFn>(config.toolImplementations.vals(), thash);
+    let toolCallHandler = (
       "tools/call",
       Handler.update1<Types.CallToolParams, CallToolResult>(
         func(params : Types.CallToolParams, cb : (Result.Result<CallToolResult, HandlerError>) -> ()) : async () {
-          switch (Map.get(tool_dispatcher, thash, params.name)) {
+          switch (Map.get(toolDispatcher, thash, params.name)) {
             case (?fn) { fn(params.arguments, cb) };
             case (null) {
               cb(#err({ code = -32602; message = "Unknown tool: " # params.name }));
@@ -149,7 +149,7 @@ module {
 
     // A handler for the `ping` method.
     // We use `Handler.query0` because `ping` takes no parameters.
-    let ping_handler = (
+    let pingHandler = (
       "ping",
       Handler.query0<JsonValue>(
         // The callback `cb` expects the raw success value, not a Result.
@@ -162,7 +162,7 @@ module {
       ),
     );
 
-    let notifications_initialized_handler = (
+    let notificationsInitializedHandler = (
       "notifications/initialized",
       Handler.query0<()>(
         func(cb) { cb(()) }, // No-op, just acknowledges the notification.
@@ -171,26 +171,26 @@ module {
     );
 
     // --- Assemble All Routes ---
-    var all_routes = [
-      initialize_handler,
-      notifications_initialized_handler,
-      resources_list_handler,
-      resources_read_handler,
-      tools_list_handler,
-      tools_call_handler,
-      ping_handler,
+    var allRoutes = [
+      initializeHandler,
+      notificationsInitializedHandler,
+      resourcesListHandler,
+      resourcesReadHandler,
+      toolsListHandler,
+      toolCallHandler,
+      pingHandler,
     ];
 
     switch (config.customRoutes) {
       case (?routes) {
-        all_routes := Array.append(all_routes, routes);
+        allRoutes := Array.append(allRoutes, routes);
       };
       case (null) {};
     };
 
     // --- Create and return the low-level server ---
     let FAKE_JWT_KEY : Blob = Blob.fromArray([]);
-    return Server.Server(all_routes, FAKE_JWT_KEY);
+    return Server.Server(allRoutes, FAKE_JWT_KEY);
   };
 
 };

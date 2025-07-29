@@ -62,6 +62,6 @@ module {
   // The public entry point for update calls.
   public func http_request_update(ctx : Context, req : SrvTypes.HttpRequest) : async SrvTypes.HttpResponse {
     // All MCP logic is now routed through here, ensuring responses are certified.
-    return await ctx.mcp_server.handle_request(req);
+    return await ctx.mcp_server.handle_request(req, null);
   };
 };

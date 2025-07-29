@@ -2,11 +2,36 @@ import Json "../json";
 import Map "mo:map/Map";
 import Time "mo:base/Time";
 import Timer "mo:base/Timer";
+import Result "mo:base/Result";
+import Handler "../server/Handler";
+import AuthTypes "../auth/Types";
+
 // This file defines the core data structures for the MCP Lifecycle.
 // Based on spec revision: 2025-06-18
 
 module {
+  // Re-export types the developer will need.
+  public type HandlerError = Handler.HandlerError;
   public type JsonValue = Json.Json;
+
+  // The `AuthInfo` is optional at the type level. The SDK guarantees it will be
+  // non-null if authentication is configured on the server.
+  public type ToolFn = (
+    args : JsonValue,
+    auth : ?AuthTypes.AuthInfo,
+    cb : (Result.Result<CallToolResult, Handler.HandlerError>) -> (),
+  ) -> ();
+
+  // The configuration record the developer will provide.
+  public type McpConfig = {
+    serverInfo : ServerInfo;
+    auth : ?AuthTypes.AuthConfig;
+    resources : [Resource];
+    resourceReader : (uri : Text) -> ?Text;
+    tools : [Tool];
+    toolImplementations : [(Text, ToolFn)];
+    customRoutes : ?[(Text, Handler.Handler)];
+  };
 
   // --- Client Information ---
   public type ClientInfo = {

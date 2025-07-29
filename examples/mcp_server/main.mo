@@ -12,6 +12,7 @@ import BaseX "mo:base-x-encoder";
 // The only SDK import the user needs!
 import Mcp "../../src/mcp/Mcp";
 import McpTypes "../../src/mcp/Types";
+import AuthTypes "../../src/auth/Types";
 import HttpHandler "../../src/mcp/HttpHandler";
 import SrvTypes "../../src/server/Types";
 import Cleanup "../../src/mcp/Cleanup";
@@ -30,7 +31,7 @@ shared persistent actor class McpServer() {
   Cleanup.startCleanupTimer<system>(appContext);
 
   // --- 1. DEFINE YOUR RESOURCES & TOOLS ---
-  var resources : [Mcp.Resource] = [
+  var resources : [McpTypes.Resource] = [
     {
       uri = "file:///main.py";
       name = "main.py";
@@ -47,7 +48,7 @@ shared persistent actor class McpServer() {
     },
   ];
 
-  var tools : [Mcp.Tool] = [{
+  var tools : [McpTypes.Tool] = [{
     name = "get_weather";
     title = ?"Weather Provider";
     description = ?"Get current weather information for a location";
@@ -64,7 +65,7 @@ shared persistent actor class McpServer() {
   }];
 
   // --- 2. DEFINE YOUR TOOL LOGIC ---
-  func getWeatherTool(args : Mcp.JsonValue, cb : (Result.Result<Mcp.CallToolResult, Mcp.HandlerError>) -> ()) {
+  func getWeatherTool(args : McpTypes.JsonValue, auth : ?AuthTypes.AuthInfo, cb : (Result.Result<McpTypes.CallToolResult, McpTypes.HandlerError>) -> ()) {
     let location = switch (Result.toOption(Json.getAsText(args, "location"))) {
       case (?loc) { loc };
       case (null) {
@@ -84,12 +85,13 @@ shared persistent actor class McpServer() {
   };
 
   // --- 3. CONFIGURE THE SDK ---
-  transient let mcpConfig : Mcp.McpConfig = {
+  transient let mcpConfig : McpTypes.McpConfig = {
     serverInfo = {
       name = "MCP-Motoko-Server";
       title = "MCP Motoko Reference Server";
       version = "0.1.0";
     };
+    auth = null; // No authentication for this example.
     resources = resources;
     resourceReader = func(uri) {
       Map.get(appContext.resourceContents, thash, uri);

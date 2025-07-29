@@ -10,6 +10,8 @@ import Server "../server/Server";
 import Handler "../server/Handler";
 import Encode "../server/Encode";
 
+import AuthTypes "../auth/Types";
+
 // Public-facing MCP types
 import Types "Types";
 import Decode "Decode";
@@ -17,29 +19,8 @@ import MCPEncode "Encode";
 
 module {
 
-  // Re-export types the developer will need.
-  public type Tool = Types.Tool;
-  public type Resource = Types.Resource;
-  public type ServerInfo = Types.ServerInfo;
-  public type CallToolResult = Types.CallToolResult;
-  public type HandlerError = Handler.HandlerError;
-  public type JsonValue = Types.JsonValue;
-
-  // A type alias for the developer's tool implementation functions.
-  public type ToolFn = (JsonValue, (Result.Result<CallToolResult, HandlerError>) -> ()) -> ();
-
-  // The configuration record the developer will provide.
-  public type McpConfig = {
-    serverInfo : ServerInfo;
-    resources : [Resource];
-    resourceReader : (uri : Text) -> ?Text;
-    tools : [Tool];
-    toolImplementations : [(Text, ToolFn)];
-    customRoutes : ?[(Text, Handler.Handler)];
-  };
-
   // The main builder function for the SDK.
-  public func createServer(config : McpConfig) : Server.Server {
+  public func createServer(config : Types.McpConfig) : Server.Server {
     // --- Auto-generated MCP Handlers ---
 
     // 1. `initialize` handler
@@ -92,7 +73,7 @@ module {
       Handler.query1<Types.ReadResourceParams, Types.ReadResourceResult>(
         func(params, cb) {
           // Find the resource metadata and content.
-          let resource_meta = Array.find<Resource>(config.resources, func(r) { r.uri == params.uri });
+          let resource_meta = Array.find<Types.Resource>(config.resources, func(r) { r.uri == params.uri });
           let content_text = config.resourceReader(params.uri);
 
           switch (resource_meta, content_text) {
@@ -130,13 +111,13 @@ module {
     );
 
     // 5. `tools/call` handler (with its dispatcher)
-    let toolDispatcher = Map.fromIter<Text, ToolFn>(config.toolImplementations.vals(), thash);
+    let toolDispatcher = Map.fromIter<Text, Types.ToolFn>(config.toolImplementations.vals(), thash);
     let toolCallHandler = (
       "tools/call",
-      Handler.update1<Types.CallToolParams, CallToolResult>(
-        func(params : Types.CallToolParams, cb : (Result.Result<CallToolResult, HandlerError>) -> ()) : async () {
+      Handler.update1<Types.CallToolParams, Types.CallToolResult>(
+        func(params : Types.CallToolParams, cb : (Result.Result<Types.CallToolResult, Types.HandlerError>) -> ()) : async () {
           switch (Map.get(toolDispatcher, thash, params.name)) {
-            case (?fn) { fn(params.arguments, cb) };
+            case (?fn) { fn(params.arguments, null, cb) };
             case (null) {
               cb(#err({ code = -32602; message = "Unknown tool: " # params.name }));
             };
@@ -151,7 +132,7 @@ module {
     // We use `Handler.query0` because `ping` takes no parameters.
     let pingHandler = (
       "ping",
-      Handler.query0<JsonValue>(
+      Handler.query0<Types.JsonValue>(
         // The callback `cb` expects the raw success value, not a Result.
         // The `query0` helper wraps it in #ok for us.
         func(cb) {
@@ -189,8 +170,7 @@ module {
     };
 
     // --- Create and return the low-level server ---
-    let FAKE_JWT_KEY : Blob = Blob.fromArray([]);
-    return Server.Server(allRoutes, FAKE_JWT_KEY);
+    return Server.Server(allRoutes);
   };
 
 };

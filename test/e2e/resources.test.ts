@@ -48,11 +48,11 @@ describe('MCP Resources', () => {
 
     // Assert the payload (`result`) is correct.
     const result = json.result;
-    expect(Array.isArray(result)).toBe(true);
-    expect(result.length).toBe(2);
+    expect(Array.isArray(result.resources)).toBe(true);
+    expect(result.resources.length).toBe(2);
 
     // Assert the content of the first resource matches our canister state.
-    const firstResource = result[0];
+    const firstResource = result.resources[0];
     expect(firstResource.uri).toBe('file:///main.py');
     expect(firstResource.name).toBe('main.py');
     expect(firstResource.description).toBe('Contains the main logic of the application.');

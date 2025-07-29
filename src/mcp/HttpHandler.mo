@@ -27,14 +27,12 @@ module {
   // The public entry point for query calls.
   public func http_request(ctx : Context, req : SrvTypes.HttpRequest) : SrvTypes.HttpResponse {
     if (Text.contains(req.url, #text "transportType=streamable-http")) {
-      // All the streaming handshake logic is now hidden in here.
+      // Handle the streaming handshake for clients like the MCP Inspector.
       let token_blob = Blob.fromArray(Utils.nat64ToBytes(Nat64.fromIntWrap(Time.now())));
       let token_key = BaseX.toBase64(token_blob.vals(), #standard({ includePadding = true }));
-      // It modifies the state object passed in via the context.
       Map.set(ctx.active_streams, thash, token_key, Time.now());
 
       let streaming_strategy : HttpTypes.StreamingStrategy = #Callback({
-        // It uses the callback function passed in via the context.
         callback = ctx.streaming_callback;
         token = token_blob;
       });
@@ -47,14 +45,23 @@ module {
         streaming_strategy = ?streaming_strategy;
       };
     } else {
-      // It automatically routes non-streaming requests to the MCP server.
-      return ctx.mcp_server.handle_query(req);
+      // THIS IS THE NEW LOGIC.
+      // For any other request, we don't handle it here. We immediately
+      // instruct the client to upgrade to an update call. This ensures
+      // all responses are certified via consensus.
+      return {
+        status_code = 204; // 204 No Content is a standard way to signal an upgrade.
+        headers = [];
+        body = Blob.fromArray([]);
+        upgrade = ?true;
+        streaming_strategy = null;
+      };
     };
   };
 
   // The public entry point for update calls.
   public func http_request_update(ctx : Context, req : SrvTypes.HttpRequest) : async SrvTypes.HttpResponse {
-    // It automatically routes update calls to the MCP server.
-    return await ctx.mcp_server.handle_update(req);
+    // All MCP logic is now routed through here, ensuring responses are certified.
+    return await ctx.mcp_server.handle_request(req);
   };
 };

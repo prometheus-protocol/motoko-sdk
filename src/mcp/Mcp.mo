@@ -80,9 +80,9 @@ module {
     // 2. `resources/list` handler
     let resourcesListHandler = (
       "resources/list",
-      Handler.query0<[Resource]>(
-        func(cb) { cb(config.resources) },
-        MCPEncode.resourceList,
+      Handler.query0<Types.ListResourcesResult>(
+        func(cb) { cb({ resources = config.resources; nextCursor = null }) },
+        MCPEncode.listResourcesResult,
       ),
     );
 

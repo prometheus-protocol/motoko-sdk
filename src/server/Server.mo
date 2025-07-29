@@ -3,7 +3,6 @@ import { thash } "mo:map/Map";
 import Text "mo:base/Text";
 import Blob "mo:base/Blob";
 import Result "mo:base/Result";
-import Debug "mo:base/Debug";
 import Json "../json";
 
 import Handler "Handler";
@@ -151,37 +150,26 @@ module {
       return #ok((handler, rpc_message));
     };
 
-    // --- PUBLIC ENTRY POINTS FOR THE SDK ---
+    // --- PUBLIC ENTRY POINT FOR THE SDK ---
 
-    /// To be called from the canister's `http_request` query function.
-    public func handle_query(req : Types.HttpRequest) : Types.HttpResponse {
-      Debug.print("--- handle_query received request ---");
-      Debug.print(debug_show req);
-
+    public func handle_request(req : Types.HttpRequest) : async Types.HttpResponse {
       switch (_route_request(req)) {
         case (#err(http_response)) {
+          // If routing failed (e.g., parse error, method not found), return the pre-built error response.
           return http_response;
         };
         case (#ok((handler, rpc_message))) {
-          // Switch on the handler variant
+          // Extract params and id from the parsed RPC message.
           let (params, id) = switch (rpc_message) {
             case (#request(r)) { (r.params, r.id) };
             case (#notification(n)) { (n.params, Json.nullable()) };
           };
 
+          // NEW LOGIC: Handle both handler types within this single async function.
           switch (handler) {
-            case (#mutation(_)) {
-              // This is an update method, so we must upgrade.
-              return {
-                status_code = 200;
-                headers = [];
-                body = Blob.fromArray([]);
-                upgrade = ?true;
-                streaming_strategy = null; // No streaming for this response
-              };
-            };
             case (#read(rep)) {
-              // This is a read method, execute it synchronously and handle the Result.
+              // This is a read method. Execute it synchronously.
+              // This is valid because we are inside an async function.
               switch (rep.call(params)) {
                 case (#ok(result_json)) {
                   return _create_json_response({
@@ -206,41 +194,8 @@ module {
                 };
               };
             };
-          };
-        };
-      };
-    };
-
-    /// To be called from the canister's `http_request_update` update function.
-    public func handle_update(req : Types.HttpRequest) : async Types.HttpResponse {
-      switch (_route_request(req)) {
-        case (#err(http_response)) {
-          return http_response;
-        };
-        case (#ok((handler, rpc_message))) {
-          // CORRECTED: Switch on the handler variant
-          let (params, id) = switch (rpc_message) {
-            case (#request(r)) { (r.params, r.id) };
-            case (#notification(n)) { (n.params, Json.nullable()) };
-          };
-
-          switch (handler) {
-            case (#read(_)) {
-              // This is an error: a read method was called via the update entry point.
-              let rpc_res = {
-                jsonrpc = "2.0";
-                result = null;
-                error = ?{
-                  code = -32603;
-                  message = "Internal error: Cannot call read-only method in update context";
-                  data = null;
-                };
-                id = id;
-              };
-              return _create_json_response(rpc_res);
-            };
             case (#mutation(rep)) {
-              // This is a mutation, execute it asynchronously and handle the Result.
+              // This is a mutation. Execute it asynchronously.
               switch (await rep.call(params)) {
                 case (#ok(result_json)) {
                   return _create_json_response({

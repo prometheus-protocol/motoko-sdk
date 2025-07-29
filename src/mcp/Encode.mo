@@ -111,6 +111,21 @@ module {
     return ServerEncode.array<Types.Resource>(list, resource);
   };
 
+  // The main encoder for the `tools/list` result object.
+  public func listResourcesResult(res : Types.ListResourcesResult) : Types.JsonValue {
+    var fields = [
+      ("resources", resourceList(res.resources)),
+    ];
+    // Handle optional nextCursor
+    switch (res.nextCursor) {
+      case (?cursor) {
+        fields := Array.append(fields, [("nextCursor", Json.str(cursor))]);
+      };
+      case (null) {};
+    };
+    return Json.obj(fields);
+  };
+
   // Encodes a single ResourceContent block.
   public func resourceContent(content : Types.ResourceContent) : Types.JsonValue {
     var fields = [

@@ -83,6 +83,12 @@ module {
     contents : [ResourceContent];
   };
 
+  // The `result` object for a successful `resources/list` response.
+  public type ListResourcesResult = {
+    resources : [Resource];
+    nextCursor : ?Text; // For pagination, which we'll ignore for now.
+  };
+
   // Represents a single tool the server can execute.
   public type Tool = {
     name : Text;

@@ -7,6 +7,7 @@
     "test": "test"
   },
   "scripts": {
+    "prepare": "husky",
     "test": "vitest"
   },
   "repository": {
@@ -21,11 +22,20 @@
   },
   "homepage": "https://github.com/prometheus-protocol/motoko-sdk#readme",
   "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
     "@dfinity/agent": "^3.1.0",
     "@dfinity/identity": "^3.1.0",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/exec": "^7.1.0",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.3",
     "@types/node": "^24.1.0",
     "cross-fetch": "^4.1.0",
     "dotenv": "^17.2.1",
+    "husky": "^9.1.7",
+    "mops": "^3.0.2",
+    "semantic-release": "^24.2.7",
     "vitest": "^3.2.4"
   },
   "dependencies": {

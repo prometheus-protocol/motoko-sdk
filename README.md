@@ -8,6 +8,12 @@ A comprehensive, robust, and developer-friendly SDK for building [Model Context 
 
 This SDK handles the low-level details of the MCP specification—including routing, protocol compliance, and connection management—allowing you to focus on defining your application's resources, tools, and logic.
 
+## Live Example
+
+Check out the live example server running on the Internet Computer: [MCP Example Server](https://dd6u2-wiaaa-aaaai-q32lq-cai.icp0.io).
+
+Connect to it using any MCP client including the [MCP Inspector](https://github.com/modelcontextprotocol/inspector).
+
 ## Core Concepts
 
 This SDK is designed to be declarative. You define your server's capabilities by creating records and functions, and then pass them to the SDK to handle the rest.
@@ -116,7 +122,39 @@ To run the full example server included in this repository:
 
 ## Contributing
 
-Contributions are welcome! Please open an issue to discuss your ideas before submitting a pull request.
+We welcome contributions! To ensure a smooth and automated release process, we adhere to the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification.
+
+### Commit Message Format
+
+Each commit message consists of a **header**, a **body**, and a **footer**. The header has a special format that includes a **type**, a **scope**, and a **subject**:
+
+```
+<type>(<scope>): <subject>
+<BLANK LINE>
+<body>
+<BLANK LINE>
+<footer>
+```
+
+#### Type
+
+Must be one of the following:
+*   **feat**: A new feature
+*   **fix**: A bug fix
+*   **docs**: Documentation only changes
+*   **style**: Changes that do not affect the meaning of the code (white-space, formatting, etc)
+*   **refactor**: A code change that neither fixes a bug nor adds a feature
+*   **perf**: A code change that improves performance
+*   **test**: Adding missing tests or correcting existing tests
+*   **chore**: Changes to the build process or auxiliary tools and libraries such as documentation generation
+
+#### Example
+
+```
+feat(server): add support for OAuth 2.0 authentication
+```
+
+Committing with this format allows us to automatically generate changelogs and determine the next version number for releases.
 
 ## License
 

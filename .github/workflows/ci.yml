@@ -76,4 +76,5 @@ jobs:
       - name: Release and Publish to Mops
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SKIP_HOOKS: "true"
         run: npx semantic-release

@@ -9,6 +9,7 @@
   "scripts": {
     "prepare": "husky",
     "mops:import": "mops user import --",
+    "mops:sources": "mops sources",
     "test": "npm run test:e2e && npm run test:motoko",
     "test:e2e": "vitest",
     "test:motoko": "mops test"

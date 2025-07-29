@@ -8,7 +8,10 @@
   },
   "scripts": {
     "prepare": "husky",
-    "test": "vitest"
+    "mops:import": "mops user import --",
+    "test": "npm run test:e2e && npm run test:motoko",
+    "test:e2e": "vitest",
+    "test:motoko": "mops test"
   },
   "repository": {
     "type": "git",

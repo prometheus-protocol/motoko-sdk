@@ -1,0 +1,72 @@
+name: CI/CD Pipeline
+
+on:
+  # Run on all pull requests
+  pull_request:
+  # Also run on pushes to the main branch
+  push:
+    branches:
+      - main
+
+jobs:
+  # --- JOB 1: Motoko Unit Tests ---
+  # This job is fast and runs first.
+  motoko-tests:
+    name: Motoko Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ZenVoich/setup-mops@v1
+      - name: Run Motoko tests
+        run: mops test
+
+  # --- JOB 2: TypeScript E2E Tests ---
+  # This job runs in parallel with motoko-tests.
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm ci # 'ci' is faster and safer for CI environments
+      - name: Install DFX
+        uses: dfinity/setup-dfx@main
+      - name: Start dfx
+        run: dfx start --background --clean
+      - name: Deploy canister
+        run: dfx deploy
+      - name: Run e2e tests
+        run: npm run test:e2e # Using a dedicated script for clarity
+
+  # --- JOB 3: Release (The Final Step) ---
+  # This job only runs if the other jobs succeed AND we are on the main branch.
+  release:
+    name: Release
+    # This is the key: it makes this job wait for the other jobs to succeed.
+    needs: [motoko-tests, e2e-tests]
+    # This condition ensures it ONLY runs on a push to main, not on PRs.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm ci
+      - name: Import Mops Identity from Secret
+        env:
+          DFX_IDENTITY_PEM: ${{ secrets.DFX_IDENTITY_PEM }}
+        run: npm run mops:import -- "$DFX_IDENTITY_PEM"
+      - name: Release and Publish to Mops
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release

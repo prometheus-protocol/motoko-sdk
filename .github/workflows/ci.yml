@@ -37,6 +37,7 @@ jobs:
         uses: dfinity/setup-dfx@main
       - name: Start dfx
         run: dfx start --background --clean
+      - uses: ZenVoich/setup-mops@v1
       - name: Deploy canister
         run: dfx deploy
       - name: Run e2e tests
@@ -62,10 +63,11 @@ jobs:
           node-version: '20'
       - name: Install dependencies
         run: npm ci
+      - uses: ZenVoich/setup-mops@v1
       - name: Import Mops Identity from Secret
         env:
           DFX_IDENTITY_PEM: ${{ secrets.DFX_IDENTITY_PEM }}
-        run: npm run mops:import -- "$DFX_IDENTITY_PEM"
+        run: mops user import "$DFX_IDENTITY_PEM"
       - name: Release and Publish to Mops
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

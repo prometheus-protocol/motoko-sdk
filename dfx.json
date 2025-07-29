@@ -7,7 +7,7 @@
   },
   "defaults": {
     "build": {
-      "packtool": "npm run mops:sources"
+      "packtool": "mops sources"
     }
   }
 }

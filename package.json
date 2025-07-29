@@ -8,8 +8,6 @@
   },
   "scripts": {
     "prepare": "husky",
-    "mops:import": "mops user import --",
-    "mops:sources": "mops sources",
     "test": "npm run test:e2e && npm run test:motoko",
     "test:e2e": "vitest",
     "test:motoko": "mops test"
@@ -38,7 +36,6 @@
     "cross-fetch": "^4.1.0",
     "dotenv": "^17.2.1",
     "husky": "^9.1.7",
-    "mops": "^3.0.2",
     "semantic-release": "^24.2.7",
     "vitest": "^3.2.4"
   },

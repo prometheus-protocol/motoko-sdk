@@ -69,6 +69,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - uses: ZenVoich/setup-mops@v1
+      - name: Install Motoko dependencies
+        run: mops install
       - name: Import Mops Identity from Secret
         env:
           DFX_IDENTITY_PEM: ${{ secrets.DFX_IDENTITY_PEM }}

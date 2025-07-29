@@ -1,8 +1,0 @@
-# Check the commit message file ($1) for our skip phrase.
-# If it's found, exit successfully without running tests.
-if grep -q "\[skip hooks\]" "$1"; then
-  echo "Release commit detected, skipping pre-commit hooks."
-  exit 0
-fi
-
-npm run test

@@ -67,7 +67,7 @@ jobs:
       - name: Import Mops Identity from Secret
         env:
           DFX_IDENTITY_PEM: ${{ secrets.DFX_IDENTITY_PEM }}
-        run: mops user import "$DFX_IDENTITY_PEM"
+        run: mops user import -- "$DFX_IDENTITY_PEM"
       - name: Release and Publish to Mops
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -5,6 +5,7 @@ import Text "mo:base/Text";
 import Option "mo:base/Option";
 import Blob "mo:base/Blob";
 import Time "mo:base/Time";
+import Principal "mo:base/Principal";
 import Json "../../src/json";
 import HttpTypes "mo:http-types";
 import BaseX "mo:base-x-encoder";
@@ -18,14 +19,32 @@ import SrvTypes "../../src/server/Types";
 import Cleanup "../../src/mcp/Cleanup";
 import State "../../src/mcp/State";
 
-shared persistent actor class McpServer() {
+// Auth
+import AuthState "../../src/auth/State";
+import HttpAssets "../../src/mcp/HttpAssets";
+
+shared persistent actor class McpServer() = self {
+
+  // State for certified HTTP assets (like /.well-known/...)
+  var stable_http_assets : HttpAssets.StableEntries = [];
+  transient let http_assets = HttpAssets.init(stable_http_assets);
+
   // --- STATE (Lives in the main actor) ---
   var resourceContents = [
     ("file:///main.py", "print('Hello from main.py!')"),
     ("file:///README.md", "# MCP Motoko Server"),
   ];
 
+  // The application context that holds our state.
   var appContext : McpTypes.AppContext = State.init(resourceContents);
+
+  let issuerUrl = "http://localhost:3001";
+  let requiredScopes = ["read:weather"];
+  // Initialize the auth context with the issuer URL and required scopes.
+  transient let authContext : AuthTypes.AuthContext = AuthState.init(
+    issuerUrl,
+    requiredScopes,
+  );
 
   // --- Cleanup Timer For Deleting Old Streams ---
   Cleanup.startCleanupTimer<system>(appContext);
@@ -91,7 +110,6 @@ shared persistent actor class McpServer() {
       title = "MCP Motoko Reference Server";
       version = "0.1.0";
     };
-    auth = null; // No authentication for this example.
     resources = resources;
     resourceReader = func(uri) {
       Map.get(appContext.resourceContents, thash, uri);
@@ -100,13 +118,34 @@ shared persistent actor class McpServer() {
     toolImplementations = [
       ("get_weather", getWeatherTool),
     ];
-    customRoutes = null; // No extra routes for now.
   };
 
   // --- 4. CREATE THE SERVER LOGIC ---
   transient let mcpServer = Mcp.createServer(mcpConfig);
 
   // --- PUBLIC ENTRY POINTS ---
+
+  // Helper to avoid repeating context creation.
+  private func _create_http_context() : HttpHandler.Context {
+    return {
+      self = Principal.fromActor(self);
+      active_streams = appContext.activeStreams;
+      mcp_server = mcpServer;
+      streaming_callback = http_request_streaming_callback;
+      auth = ?authContext;
+      http_asset_cache = ?http_assets.cache;
+    };
+  };
+
+  public query func http_request(req : SrvTypes.HttpRequest) : async SrvTypes.HttpResponse {
+    let ctx : HttpHandler.Context = _create_http_context();
+    return HttpHandler.http_request(ctx, req);
+  };
+
+  public func http_request_update(req : SrvTypes.HttpRequest) : async SrvTypes.HttpResponse {
+    let ctx : HttpHandler.Context = _create_http_context();
+    return await HttpHandler.http_request_update(ctx, req);
+  };
 
   // The streaming callback MUST be a public function of the main actor.
   public query func http_request_streaming_callback(token : HttpTypes.StreamingToken) : async ?HttpTypes.StreamingCallbackResponse {
@@ -123,23 +162,11 @@ shared persistent actor class McpServer() {
     return ?{ body = chunk; token = ?token };
   };
 
-  public query func http_request(req : SrvTypes.HttpRequest) : async SrvTypes.HttpResponse {
-    // Construct the context object on the fly.
-    let ctx : HttpHandler.Context = {
-      active_streams = appContext.activeStreams;
-      mcp_server = mcpServer;
-      streaming_callback = http_request_streaming_callback;
-    };
-    // Delegate the complex logic to the handler module.
-    return HttpHandler.http_request(ctx, req);
+  system func preupgrade() {
+    stable_http_assets := HttpAssets.preupgrade(http_assets);
   };
 
-  public func http_request_update(req : SrvTypes.HttpRequest) : async SrvTypes.HttpResponse {
-    let ctx : HttpHandler.Context = {
-      active_streams = appContext.activeStreams;
-      mcp_server = mcpServer;
-      streaming_callback = http_request_streaming_callback;
-    };
-    return await HttpHandler.http_request_update(ctx, req);
+  system func postupgrade() {
+    HttpAssets.postupgrade(http_assets);
   };
 };

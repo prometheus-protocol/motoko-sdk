@@ -18,7 +18,7 @@ Connect to it using any MCP client including the [MCP Inspector](https://github.
 
 This SDK is designed to be declarative. You define your server's capabilities by creating records and functions, and then pass them to the SDK to handle the rest.
 
-> **For a complete, runnable example, please see the `examples/mcp_server` directory in this repository.**
+> **For a complete, runnable example, please see the `examples/public_mcp_server` directory in this repository.**
 
 ### 1. Define Resources
 
@@ -110,7 +110,7 @@ To run the full example server included in this repository:
 
 1.  Navigate to the example directory:
     ```bash
-    cd examples/mcp_server
+    cd examples/public_mcp_server
     ```
 2.  Install dependencies and deploy:
     ```bash

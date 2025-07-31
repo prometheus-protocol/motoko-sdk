@@ -1,8 +1,12 @@
 {
   "canisters": {
-    "mcp_server": {
+    "public_mcp_server": {
       "type": "motoko",
-      "main": "examples/mcp_server/main.mo"
+      "main": "examples/public_mcp_server/main.mo"
+    },
+    "private_mcp_server": {
+      "type": "motoko",
+      "main": "examples/private_mcp_server/main.mo"
     }
   },
   "defaults": {

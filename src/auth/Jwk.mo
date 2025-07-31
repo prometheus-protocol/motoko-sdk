@@ -4,13 +4,13 @@
 
 import Json "mo:json";
 import Result "mo:base/Result";
-import Blob "mo:base/Blob";
 import BaseX "mo:base-x-encoder";
 import Nat "mo:base/Nat";
 import Nat8 "mo:base/Nat8";
 
 // Import the new, powerful ECDSA library.
 import ECDSA "mo:ecdsa";
+import Types "Types";
 
 module {
   // Helper function to convert big-endian bytes to a Nat.
@@ -21,8 +21,9 @@ module {
     };
     return n;
   };
-  /// Converts a JWK JSON object into a PEM-formatted Blob for the mo:jwt library.
-  public func jwkToPublicKeyBlob(jwk : Json.Json) : Result.Result<Blob, Text> {
+
+  // The function returns the sharable PublicKeyData DTO.
+  public func jwkToPublicKeyData(jwk : Json.Json) : Result.Result<Types.PublicKeyData, Text> {
     // 1. Extract required fields from the JSON object.
     let kty = switch (Json.getAsText(jwk, "kty")) {
       case (#ok(k)) { k };
@@ -71,13 +72,13 @@ module {
     let x_nat = _bytesToNat(x_bytes);
     let y_nat = _bytesToNat(y_bytes);
 
-    // 4. Use the ecdsa library to construct a structured PublicKey object.
-    let publicKey = ECDSA.PublicKey(x_nat, y_nat, curve);
+    let pkData : Types.PublicKeyData = {
+      x = x_nat;
+      y = y_nat;
+      // The `kind` of the curve is the sharable enum part.
+      curveKind = curve.kind;
+    };
 
-    // 5. Export the key into the standard uncompressed byte format required by mo:jwt.
-    let keyBytes = publicKey.toBytes(#uncompressed);
-
-    // 6. Return the final key as a Blob.
-    return #ok(Blob.fromArray(keyBytes));
+    return #ok(pkData);
   };
 };

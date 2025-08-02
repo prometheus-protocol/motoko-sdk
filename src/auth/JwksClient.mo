@@ -11,6 +11,8 @@ import Nat "mo:base/Nat";
 import Iter "mo:base/Iter";
 import Debug "mo:base/Debug";
 import IC "ic:aaaaa-aa";
+import Error "mo:base/Error";
+import Blob "mo:base/Blob";
 
 import Types "Types";
 import Jwk "Jwk";
@@ -21,42 +23,58 @@ module {
   // This module is completely stateless.
 
   // Helper to perform a GET request using the native IC interface.
-  private func _http_get(url : Text) : async Result.Result<Text, Text> {
+  private func _http_get(url : Text, transformFunc : Types.JwksTransformFunc) : async Result.Result<Text, Text> {
     let http_request : IC.http_request_args = {
       url = url;
       max_response_bytes = null;
       headers = [{ name = "User-Agent"; value = "mcp-motoko-sdk/1.0" }];
       body = null;
       method = #get;
-      transform = null; // No transform function needed for simple GET.
-    };
-
-    let http_response = await (with cycles = HTTPS_OUTCALL_CYCLES) IC.http_request(http_request);
-
-    if (http_response.status < 200 or http_response.status >= 300) {
-      return #err("HTTP request failed with status " # Nat.toText(http_response.status));
-    };
-
-    switch (Text.decodeUtf8(http_response.body)) {
-      case (null) { return #err("Failed to decode response body.") };
-      case (?text) {
-        Debug.print("HTTP GET response: " # text);
-        return #ok(text);
+      transform = ?{
+        function = transformFunc;
+        context = Blob.fromArray([]);
       };
+    };
+
+    try {
+      let http_response = await (with cycles = HTTPS_OUTCALL_CYCLES) IC.http_request(http_request);
+
+      if (http_response.status < 200 or http_response.status >= 300) {
+        return #err("HTTP request failed with status " # Nat.toText(http_response.status));
+      };
+
+      switch (Text.decodeUtf8(http_response.body)) {
+        case (null) { return #err("Failed to decode response body.") };
+        case (?text) {
+          Debug.print("HTTP GET response: " # text);
+          return #ok(text);
+        };
+      };
+    } catch (e) {
+      Debug.print("HTTP request failed: " # Error.message(e));
+      return #err("HTTP request failed: " # Error.message(e));
     };
   };
 
   private func _fetchAndCacheKeys(ctx : Types.AuthContext) : async ?[(Text, Types.PublicKeyData)] {
+    Debug.print("Fetching JWKS from issuer: " # ctx.issuerUrl);
     let metadataUrl = ctx.issuerUrl # "/.well-known/oauth-authorization-server";
 
     let newKeysArray = do ? {
-      let metadataText = Result.toOption(await _http_get(metadataUrl))!;
+      Debug.print("Fetching metadata from: " # metadataUrl);
+      let metadataText = Result.toOption(await _http_get(metadataUrl, ctx.transformJwksResponse))!;
+      Debug.print("Metadata response: " # metadataText);
       let metadataJson = Result.toOption(Json.parse(metadataText))!;
+      Debug.print("Parsed metadata JSON: " # Json.stringify(metadataJson, null));
       let jwksUri = Result.toOption(Json.getAsText(metadataJson, "jwks_uri"))!;
+      Debug.print("JWKS URI: " # jwksUri);
 
-      let jwksText = Result.toOption(await _http_get(jwksUri))!;
+      let jwksText = Result.toOption(await _http_get(jwksUri, ctx.transformJwksResponse))!;
+      Debug.print("JWKS response: " # jwksText);
       let jwksJson = Result.toOption(Json.parse(jwksText))!;
+      Debug.print("Parsed JWKS JSON: " # Json.stringify(jwksJson, null));
       let keysArray = Result.toOption(Json.getAsArray(jwksJson, "keys"))!;
+      Debug.print("Parsed keys array: " # debug_show keysArray);
 
       var parsedKeysMap = Map.new<Text, Types.PublicKeyData>();
       for (keyJson in keysArray.vals()) {
@@ -73,6 +91,8 @@ module {
       // Convert the map to a sharable array before returning.
       Iter.toArray(Map.entries(parsedKeysMap));
     };
+
+    Debug.print("Fetched and cached JWKS keys: " # debug_show newKeysArray);
 
     return newKeysArray;
   };

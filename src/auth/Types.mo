@@ -1,6 +1,7 @@
 import Map "mo:map/Map";
 import ECDSA "mo:ecdsa";
 import CertTree "mo:ic-certification/CertTree";
+import IC "ic:aaaaa-aa";
 
 module {
   public type AuthInfo = {
@@ -19,6 +20,11 @@ module {
   public type JwksKeyCache = Map.Map<Text, Map.Map<Text, PublicKeyData>>;
   public type JwksKeyCacheEntry = Map.Map<Text, PublicKeyData>;
 
+  public type JwksTransformFunc = shared query ({
+    context : Blob;
+    response : IC.http_request_result;
+  }) -> async IC.http_request_result;
+
   // A dedicated context for authentication ---
   // This object holds all the state and configuration needed ONLY for auth.
   public type AuthContext = {
@@ -28,6 +34,8 @@ module {
     requiredScopes : [Text];
     // The mutable cache for JSON Web Keys.
     jwksCache : JwksKeyCache;
+    // The function to transform JWKS responses.
+    transformJwksResponse : JwksTransformFunc;
     // The certification tree for managing certified resources.
     certTree : CertTree.Ops;
   };

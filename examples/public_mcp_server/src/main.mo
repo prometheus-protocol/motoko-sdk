@@ -6,18 +6,18 @@ import Option "mo:base/Option";
 import Blob "mo:base/Blob";
 import Time "mo:base/Time";
 import Principal "mo:base/Principal";
-import Json "../../src/json";
+import Json "../../../src/json";
 import HttpTypes "mo:http-types";
 import BaseX "mo:base-x-encoder";
 
 // The only SDK import the user needs!
-import Mcp "../../src/mcp/Mcp";
-import McpTypes "../../src/mcp/Types";
-import AuthTypes "../../src/auth/Types";
-import HttpHandler "../../src/mcp/HttpHandler";
-import SrvTypes "../../src/server/Types";
-import Cleanup "../../src/mcp/Cleanup";
-import State "../../src/mcp/State";
+import Mcp "../../../src/mcp/Mcp";
+import McpTypes "../../../src/mcp/Types";
+import AuthTypes "../../../src/auth/Types";
+import HttpHandler "../../../src/mcp/HttpHandler";
+import SrvTypes "../../../src/server/Types";
+import Cleanup "../../../src/mcp/Cleanup";
+import State "../../../src/mcp/State";
 
 shared persistent actor class McpServer() = self {
   // --- STATE (Lives in the main actor) ---
@@ -130,6 +130,7 @@ shared persistent actor class McpServer() = self {
       mcp_server = mcpServer;
       streaming_callback = http_request_streaming_callback;
       auth = null; // No authentication in this example.
+      http_asset_cache = null; // No HTTP asset cache in this example.
     };
     // Delegate the complex logic to the handler module.
     return HttpHandler.http_request(ctx, req);
@@ -142,6 +143,7 @@ shared persistent actor class McpServer() = self {
       mcp_server = mcpServer;
       streaming_callback = http_request_streaming_callback;
       auth = null; // No authentication in this example.
+      http_asset_cache = null; // No HTTP asset cache in this example.
     };
     return await HttpHandler.http_request_update(ctx, req);
   };

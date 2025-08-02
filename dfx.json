@@ -2,11 +2,19 @@
   "canisters": {
     "public_mcp_server": {
       "type": "motoko",
-      "main": "examples/public_mcp_server/main.mo"
+      "main": "examples/public_mcp_server/src/main.mo"
     },
     "private_mcp_server": {
       "type": "motoko",
-      "main": "examples/private_mcp_server/main.mo"
+      "main": "examples/private_mcp_server/src/main.mo"
+    },
+    "test_public_mcp_server": {
+      "type": "motoko",
+      "main": "test/e2e/public_mcp_server/main.mo"
+    },
+    "test_private_mcp_server": {
+      "type": "motoko",
+      "main": "test/e2e/private_mcp_server/main.mo"
     }
   },
   "defaults": {

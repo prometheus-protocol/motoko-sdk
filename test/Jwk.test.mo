@@ -10,7 +10,7 @@ import Nat8 "mo:base/Nat8";
 
 // Module to test
 import Jwk "../src/auth/Jwk";
-import Types "../src/auth/Types"; // NEW: Import the types module
+import Types "../src/auth/Types";
 
 // =================================================================================================
 // HELPER FUNCTIONS FOR TESTING

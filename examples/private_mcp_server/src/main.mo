@@ -6,22 +6,24 @@ import Option "mo:base/Option";
 import Blob "mo:base/Blob";
 import Time "mo:base/Time";
 import Principal "mo:base/Principal";
-import Json "../../src/json";
+import Json "../../../src/json";
 import HttpTypes "mo:http-types";
 import BaseX "mo:base-x-encoder";
 
 // The only SDK import the user needs!
-import Mcp "../../src/mcp/Mcp";
-import McpTypes "../../src/mcp/Types";
-import AuthTypes "../../src/auth/Types";
-import HttpHandler "../../src/mcp/HttpHandler";
-import SrvTypes "../../src/server/Types";
-import Cleanup "../../src/mcp/Cleanup";
-import State "../../src/mcp/State";
+import Mcp "../../../src/mcp/Mcp";
+import McpTypes "../../../src/mcp/Types";
+import AuthTypes "../../../src/auth/Types";
+import HttpHandler "../../../src/mcp/HttpHandler";
+import SrvTypes "../../../src/server/Types";
+import Cleanup "../../../src/mcp/Cleanup";
+import State "../../../src/mcp/State";
+
+import IC "ic:aaaaa-aa"; // Import the IC module for HTTP requests
 
 // Auth
-import AuthState "../../src/auth/State";
-import HttpAssets "../../src/mcp/HttpAssets";
+import AuthState "../../../src/auth/State";
+import HttpAssets "../../../src/mcp/HttpAssets";
 
 shared persistent actor class McpServer() = self {
 
@@ -38,12 +40,24 @@ shared persistent actor class McpServer() = self {
   // The application context that holds our state.
   var appContext : McpTypes.AppContext = State.init(resourceContents);
 
-  let issuerUrl = "http://localhost:3001";
-  let requiredScopes = ["read:weather"];
+  let issuerUrl = "https://bfggx-7yaaa-aaaai-q32gq-cai.icp0.io";
+  let requiredScopes = ["openid"];
+
+  //function to transform the response for jwks client
+  public query func transformJwksResponse({
+    context : Blob;
+    response : IC.http_request_result;
+  }) : async IC.http_request_result {
+    {
+      response with headers = []; // not intersted in the headers
+    };
+  };
+
   // Initialize the auth context with the issuer URL and required scopes.
   transient let authContext : AuthTypes.AuthContext = AuthState.init(
     issuerUrl,
     requiredScopes,
+    transformJwksResponse,
   );
 
   // --- Cleanup Timer For Deleting Old Streams ---
@@ -106,8 +120,8 @@ shared persistent actor class McpServer() = self {
   // --- 3. CONFIGURE THE SDK ---
   transient let mcpConfig : McpTypes.McpConfig = {
     serverInfo = {
-      name = "MCP-Motoko-Server";
-      title = "MCP Motoko Reference Server";
+      name = "full-onchain-mcp-server";
+      title = "Full On-chain MCP Server";
       version = "0.1.0";
     };
     resources = resources;

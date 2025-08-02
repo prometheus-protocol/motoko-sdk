@@ -6,7 +6,7 @@ import Types "Types"; // Import our new types module
 
 module {
   // The init function creates a fresh instance of our application's auth state.
-  public func init(issuerUrl : Text, requiredScopes : [Text]) : Types.AuthContext {
+  public func init(issuerUrl : Text, requiredScopes : [Text], transformJwksResponse : Types.JwksTransformFunc) : Types.AuthContext {
     var cert_store : CertTree.Store = CertTree.newStore();
     let ct = CertTree.Ops(cert_store);
 
@@ -15,6 +15,7 @@ module {
       requiredScopes = requiredScopes;
       jwksCache = Map.new<Text, Map.Map<Text, Types.PublicKeyData>>();
       certTree = ct;
+      transformJwksResponse = transformJwksResponse; // Function to transform JWKS responses
     };
   };
 };

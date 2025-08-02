@@ -18,14 +18,14 @@ module {
       case (null) {};
     };
 
-    // Set a recurring timer for every 5 minutes.
-    let interval = #nanoseconds(5 * 60 * 1_000_000_000);
+    // Set a recurring timer for every 24 hours.
+    let interval = #nanoseconds(24 * 60 * 60 * 1_000_000_000);
 
     // Define the cleanup function that will run on each timer tick.
-    // It will remove any streams that have been inactive for more than 10 minutes.
+    // It will remove any streams that have been inactive for more than 24 hours.
     func runCleanup() : async () {
       Debug.print("Running scheduled stream cleanup via Timer...");
-      let STALE_STREAM_TIMEOUT : Int = 10 * 60 * 1_000_000_000; // 10 minutes
+      let STALE_STREAM_TIMEOUT : Int = 24 * 60 * 60 * 1_000_000_000; // 24 hours
       let now = Time.now();
       var keysToRemove : [Text] = [];
 

@@ -106,7 +106,6 @@ module {
     ]);
 
     let stingified = Json.stringify(bodyJson, null);
-    Debug.print("Resource metadata JSON: " # stingified);
 
     return Text.encodeUtf8(stingified);
   };

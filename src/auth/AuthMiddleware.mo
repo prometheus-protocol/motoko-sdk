@@ -62,28 +62,24 @@ module {
       case (?t) { t };
       case (null) { return #err(_unauthorized()) };
     };
-    Debug.print("Extracted token: " # tokenString);
 
     // 2. Parse the token structure.
     let parsedToken = switch (Jwt.parse(tokenString)) {
       case (#ok(t)) { t };
       case (#err(_)) { return #err(_unauthorized()) };
     };
-    Debug.print("Parsed token successfully.");
 
     // 3. Get the Key ID (kid) from the token header.
     let kid = switch (Jwt.getHeaderValue(parsedToken, "kid")) {
       case (?#string(k)) { k };
       case _ { return #err(_unauthorized()) };
     };
-    Debug.print("Token Key ID (kid): " # kid);
 
     // 4. Fetch the public key *data* (the DTO).
     let pkData = switch (await JwksClient.getPublicKey(ctx, kid)) {
       case (?data) { data };
       case (null) { return #err(_unauthorized()) };
     };
-    Debug.print("Public key data fetched successfully: " # debug_show (pkData));
 
     // --- NEW: Reconstruct the PublicKey object from the DTO ---
     let curve = ECDSA.Curve(pkData.curveKind);
@@ -105,19 +101,16 @@ module {
 
     switch (Jwt.validate(parsedToken, validationOptions)) {
       case (#err(e)) {
-        Debug.print("Token validation failed: " # e);
         return #err(_unauthorized());
       };
       case (#ok()) {};
     };
-    Debug.print("Token validated successfully.");
 
     // 6. Validate scopes.
     let token_scope_text = switch (Jwt.getPayloadValue(parsedToken, "scope")) {
       case (?#string(t)) { t };
       case _ { "" };
     };
-    Debug.print("Token scopes: " # token_scope_text);
     let token_scopes = Buffer.fromIter<Text>(Text.split(token_scope_text, #char ' '));
 
     for (required_scope in ctx.requiredScopes.vals()) {
@@ -126,7 +119,6 @@ module {
         return #err(_forbidden(reason));
       };
     };
-    Debug.print("Token contains all required scopes.");
 
     // 7. Construct and return AuthInfo.
     let sub = switch (Jwt.getPayloadValue(parsedToken, "sub")) {
@@ -135,7 +127,6 @@ module {
         return #err(_forbidden("Token is missing or has invalid 'sub' claim."));
       };
     };
-    Debug.print("Token subject (sub): " # sub);
 
     let authInfo : Types.AuthInfo = {
       principal = Principal.fromText(sub);

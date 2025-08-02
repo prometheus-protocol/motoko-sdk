@@ -219,7 +219,6 @@ module {
           ("text", Json.str(data.text)),
         ]);
 
-        Debug.print("Tool result content (text): " # debug_show (content));
         return content;
       };
       // We can add other cases like #image here later.
@@ -241,7 +240,6 @@ module {
     };
 
     let result_obj = Json.obj(fields);
-    Debug.print("Call tool result: " # Json.stringify(result_obj, null));
     return result_obj;
   };
 

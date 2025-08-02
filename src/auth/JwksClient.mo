@@ -30,6 +30,7 @@ module {
       headers = [{ name = "User-Agent"; value = "mcp-motoko-sdk/1.0" }];
       body = null;
       method = #get;
+      is_replicated = ?true;
       transform = ?{
         function = transformFunc;
         context = Blob.fromArray([]);
@@ -46,7 +47,6 @@ module {
       switch (Text.decodeUtf8(http_response.body)) {
         case (null) { return #err("Failed to decode response body.") };
         case (?text) {
-          Debug.print("HTTP GET response: " # text);
           return #ok(text);
         };
       };
@@ -57,24 +57,16 @@ module {
   };
 
   private func _fetchAndCacheKeys(ctx : Types.AuthContext) : async ?[(Text, Types.PublicKeyData)] {
-    Debug.print("Fetching JWKS from issuer: " # ctx.issuerUrl);
     let metadataUrl = ctx.issuerUrl # "/.well-known/oauth-authorization-server";
 
     let newKeysArray = do ? {
-      Debug.print("Fetching metadata from: " # metadataUrl);
       let metadataText = Result.toOption(await _http_get(metadataUrl, ctx.transformJwksResponse))!;
-      Debug.print("Metadata response: " # metadataText);
       let metadataJson = Result.toOption(Json.parse(metadataText))!;
-      Debug.print("Parsed metadata JSON: " # Json.stringify(metadataJson, null));
       let jwksUri = Result.toOption(Json.getAsText(metadataJson, "jwks_uri"))!;
-      Debug.print("JWKS URI: " # jwksUri);
 
       let jwksText = Result.toOption(await _http_get(jwksUri, ctx.transformJwksResponse))!;
-      Debug.print("JWKS response: " # jwksText);
       let jwksJson = Result.toOption(Json.parse(jwksText))!;
-      Debug.print("Parsed JWKS JSON: " # Json.stringify(jwksJson, null));
       let keysArray = Result.toOption(Json.getAsArray(jwksJson, "keys"))!;
-      Debug.print("Parsed keys array: " # debug_show keysArray);
 
       var parsedKeysMap = Map.new<Text, Types.PublicKeyData>();
       for (keyJson in keysArray.vals()) {
@@ -92,8 +84,6 @@ module {
       Iter.toArray(Map.entries(parsedKeysMap));
     };
 
-    Debug.print("Fetched and cached JWKS keys: " # debug_show newKeysArray);
-
     return newKeysArray;
   };
 
@@ -102,9 +92,7 @@ module {
     switch (Map.get(ctx.jwksCache, thash, ctx.issuerUrl)) {
       case (?keys) {
         // Cache hit.
-        Debug.print("Cache hit for JWKS key: " # kid);
         let cachedPkData = Map.get(keys, thash, kid);
-        Debug.print("Found key: " # debug_show cachedPkData);
         let reconstructedPkData = switch (cachedPkData) {
           case (?data) {
             ?{

@@ -2,15 +2,12 @@ import Map "mo:map/Map";
 import { thash } "mo:map/Map";
 import Result "mo:base/Result";
 import Array "mo:base/Array";
-import Blob "mo:base/Blob";
 import Json "../json";
 
 // Internal SDK imports
 import Server "../server/Server";
 import Handler "../server/Handler";
 import Encode "../server/Encode";
-
-import AuthTypes "../auth/Types";
 
 // Public-facing MCP types
 import Types "Types";
@@ -162,14 +159,7 @@ module {
       pingHandler,
     ];
 
-    switch (config.customRoutes) {
-      case (?routes) {
-        allRoutes := Array.append(allRoutes, routes);
-      };
-      case (null) {};
-    };
-
-    // --- Create and return the low-level server ---
+    // --- Create and return the low-level JSON RPC server ---
     return Server.Server(allRoutes);
   };
 

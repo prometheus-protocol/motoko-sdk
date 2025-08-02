@@ -25,12 +25,10 @@ module {
   // The configuration record the developer will provide.
   public type McpConfig = {
     serverInfo : ServerInfo;
-    auth : ?AuthTypes.AuthConfig;
     resources : [Resource];
     resourceReader : (uri : Text) -> ?Text;
     tools : [Tool];
     toolImplementations : [(Text, ToolFn)];
-    customRoutes : ?[(Text, Handler.Handler)];
   };
 
   // --- Client Information ---
@@ -147,6 +145,11 @@ module {
     content : [ToolResultContent];
     isError : Bool;
     structuredContent : ?JsonValue;
+  };
+
+  public type Environment = {
+    #local; // Local development environment
+    #production; // Production environment
   };
 
   public type AppContext = {

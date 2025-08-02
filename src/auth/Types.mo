@@ -1,36 +1,34 @@
 import Map "mo:map/Map";
-import IC "ic:aaaaa-aa";
+import ECDSA "mo:ecdsa";
+import CertTree "mo:ic-certification/CertTree";
 
 module {
-
-  // The configuration for mandatory, server-wide authentication.
-  public type AuthConfig = {
-    // The unique URL of the trusted Authorization Server (e.g., https://<principal>.icp0.io)
-    issuerUrl : Text;
-    // The set of scopes that MUST be present in any valid token for this server.
-    requiredScopes : [Text];
-  };
-
   public type AuthInfo = {
     principal : Principal;
     scopes : [Text];
   };
 
-  // The type for the required transform function for HTTPS outcalls.
-  public type JwksTransformFunc = shared query ({
-    context : Blob;
-    response : IC.http_request_result;
-  }) -> async IC.http_request_result;
+  // A sharable DTO to hold the raw components of an ECDSA public key.
+  public type PublicKeyData = {
+    x : Nat;
+    y : Nat;
+    curveKind : ECDSA.CurveKind; // The curve's enum is a sharable variant.
+  };
 
-  // The type for the JWKS key cache.
-  public type JwksKeyCache = Map.Map<Text, Map.Map<Text, Blob>>;
+  // The cache will now store this sharable DTO.
+  public type JwksKeyCache = Map.Map<Text, Map.Map<Text, PublicKeyData>>;
+  public type JwksKeyCacheEntry = Map.Map<Text, PublicKeyData>;
 
   // A dedicated context for authentication ---
   // This object holds all the state and configuration needed ONLY for auth.
   public type AuthContext = {
+    // The configuration for the authentication server.
+    issuerUrl : Text;
+    // The scopes that are required for any valid token.
+    requiredScopes : [Text];
     // The mutable cache for JSON Web Keys.
     jwksCache : JwksKeyCache;
-    // A reference to the transform function in the main actor.
-    jwksTransform : JwksTransformFunc;
+    // The certification tree for managing certified resources.
+    certTree : CertTree.Ops;
   };
 };

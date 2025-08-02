@@ -1,50 +1,123 @@
-import { describe, it, expect, beforeAll } from 'vitest';
-import { Actor, HttpAgent, Identity } from '@dfinity/agent';
-import { Ed25519KeyIdentity } from '@dfinity/identity'; // Or another identity type
-import * as jose from 'jose'; // For generating JWTs
+import { describe, test, expect, beforeAll } from 'vitest';
+import * as jose from 'jose';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+import * as fs from 'fs/promises';
 
-// This will be the auto-generated interface for our actor
-import { idlFactory, _SERVICE } from '../../src/declarations/mcp_server/mcp_server.did';
+dotenv.config({ path: path.resolve(__dirname, '.test.env') });
 
-// --- Test Setup ---
-const canisterId = process.env.MCP_MOTOKO_SDK_BACKEND_CANISTER_ID;
-const agent = new HttpAgent({ host: 'http://127.0.0.1:4943' });
+// --- Test Configuration (from environment) ---
+const canisterId = process.env.E2E_CANISTER_ID_PRIVATE!;
+const replicaUrl = process.env.E2E_REPLICA_URL!;
+const mockAuthServerUrl = process.env.E2E_MOCK_AUTH_SERVER_URL!;
 
-// We'll create a real actor instance to talk to our deployed canister
-let actor: _SERVICE;
+// --- Test State ---
+let jwtPrivateKey: jose.CryptoKey;
 
-// We'll need a keypair to sign our JWTs
-let jwtKeyPair: jose.GenerateKeyPairResult<jose.KeyLike>;
+describe('MCP Authentication and Discovery', () => {
+  beforeAll(async () => {
+    if (!canisterId || !replicaUrl || !mockAuthServerUrl) {
+      throw new Error('E2E environment variables not set.');
+    }
+    const keyPath = path.join(__dirname, '.test-private-key.json');
+    const privateKeyJwk = JSON.parse(await fs.readFile(keyPath, 'utf-8'));
+    jwtPrivateKey = await jose.importJWK(privateKeyJwk, 'ES256') as jose.CryptoKey;
+  }, 30000);
 
-beforeAll(async () => {
-  // This identity is for the agent's calls, NOT for the JWT `sub` claim.
-  const identity = Ed25519KeyIdentity.generate();
-  agent.replaceIdentity(identity);
-  actor = Actor.createActor<_SERVICE>(idlFactory, { agent, canisterId });
+  // --- NEW TEST CASE FOR THE DISCOVERY FLOW ---
+  test('should perform the full auth discovery flow on an unauthenticated request', async () => {
+    // ARRANGE: A standard protected tool call payload
+    const payload = { jsonrpc: '2.0', method: 'tools/call', params: { name: 'get_weather', arguments: { location: 'Tokyo' } }, id: 'discovery-test' };
+    const rpcUrl = new URL(replicaUrl);
+    rpcUrl.searchParams.set('canisterId', canisterId);
 
-  // Generate an ECDSA key pair for signing our JWTs client-side
-  jwtKeyPair = await jose.generateKeyPair('ES256');
-});
+    // STEP 1: Make an unauthenticated call and expect a 401
+    const unauthedResponse = await fetch(rpcUrl.toString(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    expect(unauthedResponse.status).toBe(401);
 
-describe('Authentication E2E Tests', () => {
+    // STEP 2: Extract the metadata URL from the WWW-Authenticate header
+    const wwwAuthHeader = unauthedResponse.headers.get('www-authenticate');
+    expect(wwwAuthHeader).toBeDefined();
 
-  it('should fail with 401 Unauthorized when no token is provided', async () => {
-    // TODO: Implement the call to a protected endpoint without an Auth header.
-    // We'll need to figure out how to make a raw http_request_update call
-    // or add a simple protected query to our test actor.
-    // expect(response.status_code).toBe(401);
+    // Our canister returns `resource_metadata` as per RFC 9728
+    const match = wwwAuthHeader!.match(/resource_metadata="([^"]+)"/);
+    expect(match).not.toBeNull();
+    const metadataPath = match![1];
+    expect(metadataPath).toBe('/.well-known/oauth-protected-resource');
+
+    // STEP 3: Call the metadata URL to discover the auth server
+    const metadataUrl = new URL(replicaUrl);
+    metadataUrl.searchParams.set('canisterId', canisterId);
+    // Add cache busting query param to ensure we get the latest metadata
+    metadataUrl.searchParams.set('cache_bust', Date.now().toString());
+    metadataUrl.pathname = metadataPath; // Set the path for the GET request
+
+    console.log('Fetching metadata from:', metadataUrl.toString());
+    const metadataResponse = await fetch(metadataUrl.toString());
+    expect(metadataResponse.status).toBe(200);
+    const metadataBody = await metadataResponse.json();
+
+    // STEP 4: Find the authorization server URL
+    expect(metadataBody.authorization_servers).toBeInstanceOf(Array);
+    const discoveredAuthServerUrl = metadataBody.authorization_servers[0];
+    expect(discoveredAuthServerUrl).toBe(mockAuthServerUrl);
+
+    // STEP 5: Get a "fake" token from the discovered Authorization Server
+    const token = await new jose.SignJWT({ scope: 'read:weather' })
+      .setProtectedHeader({ alg: 'ES256', kid: 'test-key-2025' })
+      .setIssuer(discoveredAuthServerUrl) // Use the DISCOVERED URL
+      .setSubject('aaaaa-aa')
+      .setExpirationTime('2h')
+      .sign(jwtPrivateKey);
+
+    // STEP 6: Call the resource server again with the new token
+    const finalResponse = await fetch(rpcUrl.toString(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const finalJson = await finalResponse.json();
+
+    // ASSERT: The final call succeeds
+    expect(finalResponse.status).toBe(200);
+    expect(finalJson.error).toBeUndefined();
+    expect(finalJson.result.content[0].text).toContain('Tokyo');
   });
 
-  it('should fail with 403 Forbidden when token is missing a required scope', async () => {
-    // TODO: 1. Generate a token with a valid signature but the WRONG scope.
-    // TODO: 2. Make the call with this token.
-    // TODO: 3. Assert the response is a 403.
-  });
+  test('should succeed when a valid token is provided directly', async () => {
+    // Arrange
+    const token = await new jose.SignJWT({ scope: 'read:weather' })
+      .setProtectedHeader({ alg: 'ES256', kid: 'test-key-2025' })
+      .setIssuer(mockAuthServerUrl)
+      .setSubject('aaaaa-aa')
+      .setExpirationTime('2h')
+      .sign(jwtPrivateKey);
 
-  it('should succeed when a valid token with correct scopes is provided', async () => {
-    // TODO: 1. Generate a token with a valid signature AND the CORRECT scopes.
-    // TODO: 2. Make the call with this token.
-    // TODO: 3. Assert the response is a 200 OK.
-  });
+    const payload = { jsonrpc: '2.0', method: 'tools/call', params: { name: 'get_weather', arguments: { location: 'Tokyo' } }, id: 1 };
+    const url = new URL(replicaUrl);
+    url.searchParams.set('canisterId', canisterId);
 
+    // Act
+    const response = await fetch(url.toString(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const json = await response.json();
+
+    // Assert
+    expect(response.status).toBe(200);
+    expect(json.error).toBeUndefined();
+    expect(json.result.content[0].text).toContain('Tokyo');
+  });
 });

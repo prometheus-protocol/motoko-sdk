@@ -6,7 +6,7 @@ import * as path from 'path';
 dotenv.config({ path: path.resolve(__dirname, '.test.env') });
 
 // --- Test Configuration ---
-const canisterId = process.env.E2E_CANISTER_ID!;
+const canisterId = process.env.E2E_CANISTER_ID_PUBLIC!;
 const replicaUrl = process.env.E2E_REPLICA_URL!;
 
 // Helper to create a valid JSON-RPC request payload.

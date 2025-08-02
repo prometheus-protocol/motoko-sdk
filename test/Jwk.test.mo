@@ -5,26 +5,53 @@ import Result "mo:base/Result";
 import BaseX "mo:base-x-encoder";
 import Json "../src/json";
 import Debug "mo:base/Debug";
+import Nat "mo:base/Nat";
+import Nat8 "mo:base/Nat8";
 
 // Module to test
 import Jwk "../src/auth/Jwk";
+import Types "../src/auth/Types"; // NEW: Import the types module
 
 // =================================================================================================
 // HELPER FUNCTIONS FOR TESTING
 // =================================================================================================
 
-// Helper to compare two Result<Blob, Text> values.
-func equalResult(a : Result.Result<Blob, Text>, b : Result.Result<Blob, Text>) : Bool {
+// CORRECTED: Helper to compare two Result<PublicKeyData, Text> values.
+func equalResult(a : Result.Result<Types.PublicKeyData, Text>, b : Result.Result<Types.PublicKeyData, Text>) : Bool {
   switch (a, b) {
-    case (#ok(blobA), #ok(blobB)) { return Blob.equal(blobA, blobB) };
+    case (#ok(dtoA), #ok(dtoB)) {
+      // Compare each field of the DTO
+      return dtoA.curveKind == dtoB.curveKind and dtoA.x == dtoB.x and dtoA.y == dtoB.y;
+    };
     case (#err(textA), #err(textB)) { return textA == textB };
     case _ { return false };
   };
 };
 
-// Helper to display a Result<Blob, Text> value for test output.
-func showResult(r : Result.Result<Blob, Text>) : Text {
+// CORRECTED: Helper to display a Result<PublicKeyData, Text> value for test output.
+func showResult(r : Result.Result<Types.PublicKeyData, Text>) : Text {
   return debug_show (r);
+};
+
+// This is needed because Motoko's base library doesn't have a direct equivalent.
+func natFromBytesBE(bytes : [Nat8]) : Nat {
+  var result : Nat = 0;
+  for (byte in bytes.vals()) {
+    // Left shift the current result by 8 bits to make room for the new byte.
+    result := Nat.bitshiftLeft(result, 8);
+    // Add the value of the new byte.
+    result := result + Nat8.toNat(byte);
+  };
+  return result;
+};
+
+// Helper to decode Base64URL and convert to a Nat
+func natFromBase64Url(s : Text) : Nat {
+  let bytes = switch (BaseX.fromBase64(s)) {
+    case (#ok(b)) { b };
+    case (#err(e)) { Debug.trap("Test setup failed: invalid base64url: " # e) };
+  };
+  return natFromBytesBE(bytes);
 };
 
 // =================================================================================================
@@ -36,94 +63,75 @@ await suite(
   func() : async () {
 
     await suite(
-      "jwkToPublicKeyBlob",
+      "jwkToPublicKeyData", // CORRECTED: Suite name reflects new function
       func() : async () {
 
         await test(
-          "should correctly convert a valid P-256 JWK",
+          "should correctly convert a valid P-256 JWK to a PublicKeyData DTO",
           func() : async () {
-            // This is a standard test vector from RFC 7515
+            // ARRANGE: A standard test vector from RFC 7515
+            let x_b64 = "f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU";
+            let y_b64 = "x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0";
+
             let jwk = Json.obj([
               ("kty", Json.str("EC")),
               ("crv", Json.str("P-256")),
-              ("x", Json.str("f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU")),
-              ("y", Json.str("x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0")),
+              ("x", Json.str(x_b64)),
+              ("y", Json.str(y_b64)),
             ]);
 
-            let result = Jwk.jwkToPublicKeyBlob(jwk);
+            // ACT
+            let result = Jwk.jwkToPublicKeyData(jwk);
 
-            // The expected output is the uncompressed key: 0x04 | x | y
-            let expectedHex = "047fcdce2770f6c45d4183cbee6fdb4b7b580733357be9ef13bacf6e3c7bd15445c7f144cd1bbd9b7e872cdfedb9eeb9f4b3695d6ea90b24ad8a4623288588e5ad";
-            let decoded = switch (BaseX.fromHex(expectedHex, { prefix = #none })) {
-              case (#ok(b)) { b };
-              case (#err(e)) {
-                Debug.trap("Failed to decode expected hex: " # e);
-              };
+            // ASSERT
+            // CORRECTED: The expected output is now a structured DTO, not a blob.
+            let expectedData : Types.PublicKeyData = {
+              curveKind = #prime256v1;
+              x = natFromBase64Url(x_b64);
+              y = natFromBase64Url(y_b64);
             };
-            let expectedBlob = Blob.fromArray(decoded);
 
-            switch (result) {
-              case (#ok(blob)) {
-                expect.blob(blob).equal(expectedBlob);
-              };
-              case (#err(e)) {
-                Debug.trap("Test failed unexpectedly with error: " # e);
-              };
-            };
+            expect.result<Types.PublicKeyData, Text>(result, showResult, equalResult).equal(#ok(expectedData));
           },
         );
 
         await test(
           "should return an error for an unsupported key type (kty)",
           func() : async () {
-            let jwk = Json.obj([
-              ("kty", Json.str("RSA")), // Unsupported type
-              ("crv", Json.str("P-256")),
-              ("x", Json.str("...")),
-            ]);
-            let result = Jwk.jwkToPublicKeyBlob(jwk);
-            expect.result<Blob, Text>(result, showResult, equalResult).isErr();
+            let jwk = Json.obj([("kty", Json.str("RSA")), ("crv", Json.str("P-256")), ("x", Json.str("..."))]);
+            // CORRECTED: Call the right function and use the right types
+            let result = Jwk.jwkToPublicKeyData(jwk);
+            expect.result<Types.PublicKeyData, Text>(result, showResult, equalResult).isErr();
           },
         );
 
         await test(
           "should return an error for an unsupported curve (crv)",
           func() : async () {
-            let jwk = Json.obj([
-              ("kty", Json.str("EC")),
-              ("crv", Json.str("P-384")), // Unsupported curve
-              ("x", Json.str("...")),
-            ]);
-            let result = Jwk.jwkToPublicKeyBlob(jwk);
-            expect.result<Blob, Text>(result, showResult, equalResult).isErr();
+            let jwk = Json.obj([("kty", Json.str("EC")), ("crv", Json.str("P-384")), ("x", Json.str("..."))]);
+            // CORRECTED: Call the right function and use the right types
+            let result = Jwk.jwkToPublicKeyData(jwk);
+            expect.result<Types.PublicKeyData, Text>(result, showResult, equalResult).isErr();
           },
         );
 
         await test(
           "should return an error if 'x' coordinate is missing",
           func() : async () {
-            let jwk = Json.obj([
-              ("kty", Json.str("EC")),
-              ("crv", Json.str("P-256")),
-              // Missing "x"
-              ("y", Json.str("x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0")),
-            ]);
-            let result = Jwk.jwkToPublicKeyBlob(jwk);
-            expect.result<Blob, Text>(result, showResult, equalResult).isErr();
+            let jwk = Json.obj([("kty", Json.str("EC")), ("crv", Json.str("P-256")), ("y", Json.str("..."))]);
+            // CORRECTED: Call the right function and use the right types
+            let result = Jwk.jwkToPublicKeyData(jwk);
+            expect.result<Types.PublicKeyData, Text>(result, showResult, equalResult).isErr();
           },
         );
 
         await test(
           "should return an error for invalid Base64 encoding",
           func() : async () {
-            let jwk = Json.obj([
-              ("kty", Json.str("EC")),
-              ("crv", Json.str("P-256")),
-              ("x", Json.str("this-is-not-valid-base64!!")), // Invalid characters
-              ("y", Json.str("x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0")),
-            ]);
-            let result = Jwk.jwkToPublicKeyBlob(jwk);
-            expect.result<Blob, Text>(result, showResult, equalResult).isErr();
+            let jwk = Json.obj([("kty", Json.str("EC")), ("crv", Json.str("P-256")), ("x", Json.str("!!invalid!!")), ("y", Json.str("..."))]);
+            // CORRECTED: Call the right function and use the right types
+            let result = Jwk.jwkToPublicKeyData(jwk);
+            expect.result<Types.PublicKeyData, Text>(result, showResult, equalResult).isErr();
           },
         );
       },

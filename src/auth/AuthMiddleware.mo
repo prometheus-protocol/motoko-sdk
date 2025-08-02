@@ -7,7 +7,9 @@ import Principal "mo:base/Principal";
 import JwksClient "JwksClient";
 import HttpTypes "mo:http-types";
 import Buffer "mo:base/Buffer";
+import Debug "mo:base/Debug";
 import Jwt "mo:jwt";
+import ECDSA "mo:ecdsa";
 
 module {
   // --- Private Helper Functions ---
@@ -24,9 +26,13 @@ module {
   };
 
   private func _unauthorized() : HttpTypes.Response {
+    let wwwAuthHeader : (Text, Text) = (
+      "WWW-Authenticate",
+      "Bearer resource_metadata=\"/.well-known/oauth-protected-resource\"",
+    );
     return {
       status_code = 401;
-      headers = [("Content-Type", "application/json")];
+      headers = [wwwAuthHeader, ("Content-Type", "application/json")];
       body = Text.encodeUtf8("{\"error\":\"Unauthorized\",\"message\":\"A valid Bearer token is required.\"}");
       upgrade = null;
       streaming_strategy = null;
@@ -48,7 +54,6 @@ module {
   /// Checks the request for a valid JWT and ensures it contains all required scopes.
   public func check(
     ctx : Types.AuthContext,
-    config : Types.AuthConfig,
     req : HttpTypes.Request,
   ) : async Result.Result<Types.AuthInfo, HttpTypes.Response> {
 
@@ -57,52 +62,71 @@ module {
       case (?t) { t };
       case (null) { return #err(_unauthorized()) };
     };
+    Debug.print("Extracted token: " # tokenString);
 
     // 2. Parse the token structure.
     let parsedToken = switch (Jwt.parse(tokenString)) {
       case (#ok(t)) { t };
       case (#err(_)) { return #err(_unauthorized()) };
     };
+    Debug.print("Parsed token successfully.");
 
     // 3. Get the Key ID (kid) from the token header.
     let kid = switch (Jwt.getHeaderValue(parsedToken, "kid")) {
       case (?#string(k)) { k };
       case _ { return #err(_unauthorized()) };
     };
+    Debug.print("Token Key ID (kid): " # kid);
 
-    // 4. Fetch the public key using our JwksClient.
-    let publicKey = switch (await JwksClient.getPublicKey(ctx, config.issuerUrl, kid)) {
-      case (?key) { key };
+    // 4. Fetch the public key *data* (the DTO).
+    let pkData = switch (await JwksClient.getPublicKey(ctx, kid)) {
+      case (?data) { data };
       case (null) { return #err(_unauthorized()) };
     };
+    Debug.print("Public key data fetched successfully: " # debug_show (pkData));
+
+    // --- NEW: Reconstruct the PublicKey object from the DTO ---
+    let curve = ECDSA.Curve(pkData.curveKind);
+    let publicKeyObject = ECDSA.PublicKey(pkData.x, pkData.y, curve);
+    // --- END NEW ---
+
+    // 5. Define validation options using the reconstructed object.
+    let verificationKey = #ecdsa(publicKeyObject);
 
     // 5. Define validation options and validate the token.
     let validationOptions : Jwt.ValidationOptions = {
       expiration = true;
       notBefore = true;
-      issuer = #one(config.issuerUrl);
+      issuer = #one(ctx.issuerUrl);
+      // TODO: Derive audience from canister id and ic host
       audience = #skip;
-      signature = #key(#symmetric(publicKey));
+      signature = #key(verificationKey);
     };
 
     switch (Jwt.validate(parsedToken, validationOptions)) {
-      case (#err(_)) { return #err(_unauthorized()) };
+      case (#err(e)) {
+        Debug.print("Token validation failed: " # e);
+        return #err(_unauthorized());
+      };
       case (#ok()) {};
     };
+    Debug.print("Token validated successfully.");
 
     // 6. Validate scopes.
     let token_scope_text = switch (Jwt.getPayloadValue(parsedToken, "scope")) {
       case (?#string(t)) { t };
       case _ { "" };
     };
+    Debug.print("Token scopes: " # token_scope_text);
     let token_scopes = Buffer.fromIter<Text>(Text.split(token_scope_text, #char ' '));
 
-    for (required_scope in config.requiredScopes.vals()) {
+    for (required_scope in ctx.requiredScopes.vals()) {
       if (not Buffer.contains(token_scopes, required_scope, Text.equal)) {
         let reason = "Token is missing required scope: " # required_scope;
         return #err(_forbidden(reason));
       };
     };
+    Debug.print("Token contains all required scopes.");
 
     // 7. Construct and return AuthInfo.
     let sub = switch (Jwt.getPayloadValue(parsedToken, "sub")) {
@@ -111,6 +135,7 @@ module {
         return #err(_forbidden("Token is missing or has invalid 'sub' claim."));
       };
     };
+    Debug.print("Token subject (sub): " # sub);
 
     let authInfo : Types.AuthInfo = {
       principal = Principal.fromText(sub);

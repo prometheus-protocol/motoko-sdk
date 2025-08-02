@@ -9,7 +9,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 // --- Test Setup ---
 dotenv.config({ path: path.resolve(__dirname, '.test.env') });
 
-const canisterId = process.env.E2E_CANISTER_ID!;
+const canisterId = process.env.E2E_CANISTER_ID_PUBLIC!;
 const replicaUrl = process.env.E2E_REPLICA_URL!;
 
 describe('MCP Server Compliance via SDK', () => {

@@ -109,4 +109,19 @@ module {
     };
     return Json.obj(fields);
   };
+
+  // --- Helper for creating structured error responses ---
+  public func createErrorResponse(code : Int, message : Text, id : ?Json.Json) : Types.JsonRpcResponse {
+    return {
+      jsonrpc = "2.0";
+      result = null;
+      error = ?{
+        code = code;
+        message = message;
+        data = null;
+      };
+      // Ensure the ID is JSON null if not provided, as per the spec.
+      id = Option.get(id, Json.nullable());
+    };
+  };
 };

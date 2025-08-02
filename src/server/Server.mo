@@ -15,7 +15,6 @@ module {
 
   public class Server(routes : [(Text, Handler.Handler)]) {
     // The dispatch table mapping method names to their handlers.
-    // CORRECTED: Simplified initialization. No need for map or toRep.
     private let dispatch_table : Map.Map<Text, Handler.Handler> = Map.fromIter(routes.vals(), thash);
 
     // --- Private Helper Functions ---
@@ -37,12 +36,7 @@ module {
       let body_text = switch (Text.decodeUtf8(req.body)) {
         case (?text) { text };
         case (null) {
-          let err_res = {
-            jsonrpc = "2.0";
-            result = null;
-            error = ?{ code = -32700; message = "Parse error"; data = null };
-            id = Json.nullable();
-          };
+          let err_res = Rpc.createErrorResponse(-32700, "Parse error", null);
           return #err(_create_json_response(err_res));
         };
       };
@@ -51,12 +45,7 @@ module {
       let rpc_req_json = switch (Json.parse(body_text)) {
         case (#ok(json)) { json };
         case (#err(_)) {
-          let err_res = {
-            jsonrpc = "2.0";
-            result = null;
-            error = ?{ code = -32700; message = "Parse error"; data = null };
-            id = Json.nullable();
-          };
+          let err_res = Rpc.createErrorResponse(-32700, "Parse error", null);
           return #err(_create_json_response(err_res));
         };
       };
@@ -65,18 +54,13 @@ module {
       let rpc_message = switch (Rpc.jsonToMessage(rpc_req_json)) {
         case (?msg) { msg };
         case (null) {
-          let err_res = {
-            jsonrpc = "2.0";
-            result = null;
-            error = ?{ code = -32602; message = "Invalid params"; data = null };
-            id = Json.nullable();
-          };
+          let err_res = Rpc.createErrorResponse(-32602, "Invalid params", null);
           return #err(_create_json_response(err_res));
         };
       };
 
       // 4. Route to the correct handler
-      // CORRECTED: Map.get signature is (map, key, hash)
+      //  Map.get signature is (map, key, hash)
       let method = switch (rpc_message) {
         case (#request(req)) { req.method };
         case (#notification(notif)) { notif.method };
@@ -85,20 +69,10 @@ module {
         case (?h) { h };
         case (null) {
           let id = switch (rpc_message) {
-            case (#request(req)) { req.id };
-            case (#notification(_)) { Json.nullable() }; // Notifications have no ID to echo back.
+            case (#request(req)) { ?req.id };
+            case (#notification(_)) { null };
           };
-
-          let err_res = {
-            jsonrpc = "2.0";
-            result = null;
-            error = ?{
-              code = -32601;
-              message = "Method not found";
-              data = null;
-            };
-            id = id;
-          };
+          let err_res = Rpc.createErrorResponse(-32601, "Method not found", id);
           return #err(_create_json_response(err_res));
         };
       };

@@ -1,7 +1,7 @@
 import Map "mo:map/Map";
 import ECDSA "mo:ecdsa";
 import CertTree "mo:ic-certification/CertTree";
-import IC "ic:aaaaa-aa";
+import IC "mo:ic";
 
 module {
   public type AuthInfo = {
@@ -22,8 +22,8 @@ module {
 
   public type JwksTransformFunc = shared query ({
     context : Blob;
-    response : IC.http_request_result;
-  }) -> async IC.http_request_result;
+    response : IC.HttpRequestResult;
+  }) -> async IC.HttpRequestResult;
 
   // A dedicated context for authentication ---
   // This object holds all the state and configuration needed ONLY for auth.
@@ -38,5 +38,7 @@ module {
     transformJwksResponse : JwksTransformFunc;
     // The certification tree for managing certified resources.
     certTree : CertTree.Ops;
+    // This canister's principal, used for audience validation.
+    self : Principal;
   };
 };

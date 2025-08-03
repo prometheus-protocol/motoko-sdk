@@ -6,11 +6,8 @@ import Blob "mo:base/Blob";
 import Time "mo:base/Time";
 import Nat64 "mo:base/Nat64";
 import Text "mo:base/Text";
-import CertifiedData "mo:base/CertifiedData";
 import BaseX "mo:base-x-encoder";
 import HttpTypes "mo:http-types";
-import Json "mo:json";
-import CertTree "mo:ic-certification/CertTree";
 import Utils "Utils";
 import CertifiedCache "mo:certified-cache";
 

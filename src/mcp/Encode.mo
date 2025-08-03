@@ -1,7 +1,6 @@
 import Json "../json";
 import Array "mo:base/Array";
-import Debug "mo:base/Debug";
-import Types "Types"; // Our MCP Types
+import Types "Types";
 import ServerEncode "../server/Encode"
 
 module {

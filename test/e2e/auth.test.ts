@@ -14,6 +14,9 @@ const mockAuthServerUrl = process.env.E2E_MOCK_AUTH_SERVER_URL!;
 // --- Test State ---
 let jwtPrivateKey: jose.CryptoKey;
 
+const resourceServerUrl = new URL(replicaUrl);
+resourceServerUrl.searchParams.set('canisterId', canisterId);
+
 describe('MCP Authentication and Discovery', () => {
   beforeAll(async () => {
     if (!canisterId || !replicaUrl || !mockAuthServerUrl) {
@@ -24,7 +27,33 @@ describe('MCP Authentication and Discovery', () => {
     jwtPrivateKey = await jose.importJWK(privateKeyJwk, 'ES256') as jose.CryptoKey;
   }, 30000);
 
-  // --- NEW TEST CASE FOR THE DISCOVERY FLOW ---
+  test('should return a 401 with a correct WWW-Authenticate header for unauthenticated requests', async () => {
+    // ARRANGE
+    const payload = { jsonrpc: '2.0', method: 'tools/call', params: { name: 'get_weather', arguments: { location: 'Tokyo' } }, id: 'www-auth-test' };
+    const rpcUrl = new URL(replicaUrl);
+    rpcUrl.searchParams.set('canisterId', canisterId);
+
+    // The canister should construct the metadata URL based on the request's URL.
+    // We build the expected URL here to verify it.
+    const expectedMetadataUrl = new URL(rpcUrl.toString());
+    expectedMetadataUrl.pathname = '/.well-known/oauth-protected-resource';
+    
+    const expectedHeaderValue = `Bearer resource_metadata="${expectedMetadataUrl.toString()}"`;
+
+    // ACT: Make a request without any Authorization header
+    const response = await fetch(rpcUrl.toString(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    // ASSERT
+    expect(response.status).toBe(401);
+    const wwwAuthHeader = response.headers.get('www-authenticate');
+    expect(wwwAuthHeader).toBeDefined();
+    expect(wwwAuthHeader).toBe(expectedHeaderValue);
+  });
+
   test('should perform the full auth discovery flow on an unauthenticated request', async () => {
     // ARRANGE: A standard protected tool call payload
     const payload = { jsonrpc: '2.0', method: 'tools/call', params: { name: 'get_weather', arguments: { location: 'Tokyo' } }, id: 'discovery-test' };
@@ -46,17 +75,13 @@ describe('MCP Authentication and Discovery', () => {
     // Our canister returns `resource_metadata` as per RFC 9728
     const match = wwwAuthHeader!.match(/resource_metadata="([^"]+)"/);
     expect(match).not.toBeNull();
-    const metadataPath = match![1];
-    expect(metadataPath).toBe('/.well-known/oauth-protected-resource');
-
+    const metadataUrlString = match![1]; // This is the full URL for the metadata
+    
     // STEP 3: Call the metadata URL to discover the auth server
-    const metadataUrl = new URL(replicaUrl);
-    metadataUrl.searchParams.set('canisterId', canisterId);
     // Add cache busting query param to ensure we get the latest metadata
+    const metadataUrl = new URL(metadataUrlString);
     metadataUrl.searchParams.set('cache_bust', Date.now().toString());
-    metadataUrl.pathname = metadataPath; // Set the path for the GET request
 
-    console.log('Fetching metadata from:', metadataUrl.toString());
     const metadataResponse = await fetch(metadataUrl.toString());
     expect(metadataResponse.status).toBe(200);
     const metadataBody = await metadataResponse.json();
@@ -70,6 +95,7 @@ describe('MCP Authentication and Discovery', () => {
     const token = await new jose.SignJWT({ scope: 'read:weather' })
       .setProtectedHeader({ alg: 'ES256', kid: 'test-key-2025' })
       .setIssuer(discoveredAuthServerUrl) // Use the DISCOVERED URL
+      .setAudience(resourceServerUrl.toString()) // Audience is the resource server itself
       .setSubject('aaaaa-aa')
       .setExpirationTime('2h')
       .sign(jwtPrivateKey);
@@ -96,6 +122,7 @@ describe('MCP Authentication and Discovery', () => {
     const token = await new jose.SignJWT({ scope: 'read:weather' })
       .setProtectedHeader({ alg: 'ES256', kid: 'test-key-2025' })
       .setIssuer(mockAuthServerUrl)
+      .setAudience(resourceServerUrl.toString()) // Audience is the resource server itself
       .setSubject('aaaaa-aa')
       .setExpirationTime('2h')
       .sign(jwtPrivateKey);

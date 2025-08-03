@@ -16,6 +16,7 @@ jwt = "1.1.0"
 ecdsa = "6.0.1"
 certified-cache = "0.3.0"
 sha2 = "0.1.6"
+ic = "3.0.0"
 
 [dev-dependencies]
 test = "2.1.1"

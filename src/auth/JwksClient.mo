@@ -10,7 +10,8 @@ import Text "mo:base/Text";
 import Nat "mo:base/Nat";
 import Iter "mo:base/Iter";
 import Debug "mo:base/Debug";
-import IC "ic:aaaaa-aa";
+import IC "mo:ic";
+import { ic } "mo:ic";
 import Error "mo:base/Error";
 import Blob "mo:base/Blob";
 
@@ -24,13 +25,12 @@ module {
 
   // Helper to perform a GET request using the native IC interface.
   private func _http_get(url : Text, transformFunc : Types.JwksTransformFunc) : async Result.Result<Text, Text> {
-    let http_request : IC.http_request_args = {
+    let http_request : IC.HttpRequestArgs = {
       url = url;
       max_response_bytes = null;
       headers = [{ name = "User-Agent"; value = "mcp-motoko-sdk/1.0" }];
       body = null;
       method = #get;
-      is_replicated = ?true;
       transform = ?{
         function = transformFunc;
         context = Blob.fromArray([]);
@@ -38,7 +38,7 @@ module {
     };
 
     try {
-      let http_response = await (with cycles = HTTPS_OUTCALL_CYCLES) IC.http_request(http_request);
+      let http_response = await (with cycles = HTTPS_OUTCALL_CYCLES) ic.http_request(http_request);
 
       if (http_response.status < 200 or http_response.status >= 300) {
         return #err("HTTP request failed with status " # Nat.toText(http_response.status));

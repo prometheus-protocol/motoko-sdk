@@ -19,7 +19,7 @@ import SrvTypes "../../../src/server/Types";
 import Cleanup "../../../src/mcp/Cleanup";
 import State "../../../src/mcp/State";
 
-import IC "ic:aaaaa-aa"; // Import the IC module for HTTP requests
+import IC "mo:ic"; // Import the IC module for HTTP requests
 
 // Auth
 import AuthState "../../../src/auth/State";
@@ -46,8 +46,8 @@ shared persistent actor class McpServer() = self {
   //function to transform the response for jwks client
   public query func transformJwksResponse({
     context : Blob;
-    response : IC.http_request_result;
-  }) : async IC.http_request_result {
+    response : IC.HttpRequestResult;
+  }) : async IC.HttpRequestResult {
     {
       response with headers = []; // not intersted in the headers
     };
@@ -55,6 +55,7 @@ shared persistent actor class McpServer() = self {
 
   // Initialize the auth context with the issuer URL and required scopes.
   transient let authContext : AuthTypes.AuthContext = AuthState.init(
+    Principal.fromActor(self),
     issuerUrl,
     requiredScopes,
     transformJwksResponse,

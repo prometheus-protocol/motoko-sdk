@@ -10,6 +10,7 @@ import Buffer "mo:base/Buffer";
 import Debug "mo:base/Debug";
 import Jwt "mo:jwt";
 import ECDSA "mo:ecdsa";
+import Utils "../mcp/Utils";
 
 module {
   // --- Private Helper Functions ---
@@ -25,10 +26,10 @@ module {
     return null;
   };
 
-  private func _unauthorized() : HttpTypes.Response {
+  private func _unauthorized(resourceUrl : Text) : HttpTypes.Response {
     let wwwAuthHeader : (Text, Text) = (
       "WWW-Authenticate",
-      "Bearer resource_metadata=\"/.well-known/oauth-protected-resource\"",
+      "Bearer resource_metadata=\"" # resourceUrl # "\"",
     );
     return {
       status_code = 401;
@@ -56,35 +57,37 @@ module {
     ctx : Types.AuthContext,
     req : HttpTypes.Request,
   ) : async Result.Result<Types.AuthInfo, HttpTypes.Response> {
+    let path = "/.well-known/oauth-protected-resource";
+    let thisUrl = Utils.getThisUrl(ctx.self, req, ?"/");
+    let metadataUrl = Utils.getThisUrl(ctx.self, req, ?path);
 
     // 1. Extract the token string.
     let tokenString = switch (_get_auth_token(req)) {
       case (?t) { t };
-      case (null) { return #err(_unauthorized()) };
+      case (null) { return #err(_unauthorized(metadataUrl)) };
     };
 
     // 2. Parse the token structure.
     let parsedToken = switch (Jwt.parse(tokenString)) {
       case (#ok(t)) { t };
-      case (#err(_)) { return #err(_unauthorized()) };
+      case (#err(_)) { return #err(_unauthorized(metadataUrl)) };
     };
 
     // 3. Get the Key ID (kid) from the token header.
     let kid = switch (Jwt.getHeaderValue(parsedToken, "kid")) {
       case (?#string(k)) { k };
-      case _ { return #err(_unauthorized()) };
+      case _ { return #err(_unauthorized(metadataUrl)) };
     };
 
     // 4. Fetch the public key *data* (the DTO).
     let pkData = switch (await JwksClient.getPublicKey(ctx, kid)) {
       case (?data) { data };
-      case (null) { return #err(_unauthorized()) };
+      case (null) { return #err(_unauthorized(metadataUrl)) };
     };
 
-    // --- NEW: Reconstruct the PublicKey object from the DTO ---
+    // --- Reconstruct the PublicKey object from the DTO ---
     let curve = ECDSA.Curve(pkData.curveKind);
     let publicKeyObject = ECDSA.PublicKey(pkData.x, pkData.y, curve);
-    // --- END NEW ---
 
     // 5. Define validation options using the reconstructed object.
     let verificationKey = #ecdsa(publicKeyObject);
@@ -94,14 +97,13 @@ module {
       expiration = true;
       notBefore = true;
       issuer = #one(ctx.issuerUrl);
-      // TODO: Derive audience from canister id and ic host
-      audience = #skip;
+      audience = #one(thisUrl);
       signature = #key(verificationKey);
     };
 
     switch (Jwt.validate(parsedToken, validationOptions)) {
       case (#err(e)) {
-        return #err(_unauthorized());
+        return #err(_unauthorized(metadataUrl));
       };
       case (#ok()) {};
     };

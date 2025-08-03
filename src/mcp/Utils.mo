@@ -6,7 +6,6 @@ import Nat64 "mo:base/Nat64";
 import Nat8 "mo:base/Nat8";
 import Option "mo:base/Option";
 import Principal "mo:base/Principal";
-import Debug "mo:base/Debug";
 import Map "mo:map/Map";
 import { thash } "mo:map/Map";
 import Types "Types";
@@ -58,33 +57,41 @@ module {
   };
 
   /**
-   * A helper function to get the URL for this canister.
-   * This version is robust enough to handle both production and local test environments.
-   * @param context The canister's context, containing its own Principal (self).
+   * A helper function to get a URL for this canister, optionally with a path.
+   * This version correctly constructs the URL for both production and local environments.
+   * @param self The canister's own Principal.
    * @param req The incoming HTTP request, used to determine the host.
-   * @returns The canister URL (e.g., "https://<auth_canister_id>.icp0.io").
+   * @param path An optional path to append to the canister's base URL (e.g., ?"/foo/bar" or ?"/").
+   * @returns The full URL.
    */
-  public func getThisUrl(self : Principal, req : HttpTypes.Request) : Text {
+  public func getThisUrl(self : Principal, req : HttpTypes.Request, path : ?Text) : Text {
     let hostFromHeader = getHostFromReq(req);
     let selfCanisterIdText = Principal.toText(self);
-    var finalHost : Text = "";
+    // Use the provided path, or an empty string if it's null.
+    let pathSegment = switch (path) {
+      case (?p) p;
+      case (null) "";
+    };
 
     switch (getEnvironment(hostFromHeader)) {
       case (#production) {
-        // In production, the host header is already correct.
-        finalHost := hostFromHeader;
-        return "https://" # finalHost;
+        // In production, the host is a subdomain. Just append the path.
+        // e.g., "https://<canister_id>.icp0.io" + "/path"
+        return "https://" # hostFromHeader # pathSegment;
       };
       case (#local) {
-        // In local dev, we might need to fix the host for E2E tests.
+        // In local dev, we must insert the path BEFORE the query parameter.
+        let baseUrl = "http://" # hostFromHeader;
         let canisterIdIsMissing = not Text.contains(hostFromHeader, #text(selfCanisterIdText));
+
         if (canisterIdIsMissing) {
-          // Prepend the canister ID if it's not in the host string.
-          finalHost := selfCanisterIdText # "." # hostFromHeader;
+          // Correct order: base_url + path + query_string
+          // e.g., "http://127.0.0.1:4943" + "/path" + "?canisterId=..."
+          return baseUrl # pathSegment # "?canisterId=" # selfCanisterIdText;
         } else {
-          finalHost := hostFromHeader;
+          // This case is for local testing with subdomains, if ever needed.
+          return baseUrl # pathSegment;
         };
-        return "http://" # finalHost;
       };
     };
   };
@@ -101,7 +108,7 @@ module {
     // Auth is enabled, so serve the metadata document.
     let bodyJson = Json.obj([
       ("authorization_servers", Json.arr([Json.str(authCtx.issuerUrl)])),
-      ("resource", Json.str(getThisUrl(self, req))),
+      ("resource", Json.str(getThisUrl(self, req, null))),
       ("scopes_supported", jsonScopes),
     ]);
 

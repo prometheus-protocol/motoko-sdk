@@ -58,7 +58,7 @@ module {
     req : HttpTypes.Request,
   ) : async Result.Result<Types.AuthInfo, HttpTypes.Response> {
     let path = "/.well-known/oauth-protected-resource";
-    let thisUrl = Utils.getThisUrl(ctx.self, req, ?"/");
+    let thisUrl = Utils.getThisUrl(ctx.self, req, null);
     let metadataUrl = Utils.getThisUrl(ctx.self, req, ?path);
 
     // 1. Extract the token string.
@@ -92,12 +92,15 @@ module {
     // 5. Define validation options using the reconstructed object.
     let verificationKey = #ecdsa(publicKeyObject);
 
+    Debug.print("Issuer URL: " # Utils.normalizeUri(ctx.issuerUrl));
+    Debug.print("Audience URL: " # Utils.normalizeUri(thisUrl));
+
     // 5. Define validation options and validate the token.
     let validationOptions : Jwt.ValidationOptions = {
       expiration = true;
       notBefore = true;
-      issuer = #one(ctx.issuerUrl);
-      audience = #one(thisUrl);
+      issuer = #one(Utils.normalizeUri(ctx.issuerUrl));
+      audience = #one(Utils.normalizeUri(thisUrl));
       signature = #key(verificationKey);
     };
 

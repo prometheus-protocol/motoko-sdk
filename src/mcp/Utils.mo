@@ -58,38 +58,49 @@ module {
 
   /**
    * A helper function to get a URL for this canister, optionally with a path.
-   * This version correctly constructs the URL for both production and local environments.
+   * This version correctly handles trailing slashes and path construction for
+   * both production and local environments.
    * @param self The canister's own Principal.
    * @param req The incoming HTTP request, used to determine the host.
-   * @param path An optional path to append to the canister's base URL (e.g., ?"/foo/bar" or ?"/").
+   * @param path An optional path to append to the canister's base URL (e.g., ?".well-known/oauth-protected-resource").
    * @returns The full URL.
    */
   public func getThisUrl(self : Principal, req : HttpTypes.Request, path : ?Text) : Text {
     let hostFromHeader = getHostFromReq(req);
     let selfCanisterIdText = Principal.toText(self);
-    // Use the provided path, or an empty string if it's null.
-    let pathSegment = switch (path) {
-      case (?p) p;
-      case (null) "";
+
+    var pathSegment : Text = "";
+    switch (path) {
+      case (?p) {
+        // If a path is provided, ensure it starts with a slash.
+        if (Text.startsWith(p, #char '/')) {
+          pathSegment := p;
+        } else {
+          pathSegment := "/" # p;
+        };
+      };
+      case (null) {
+        // If no path is provided, the "path" is just a single trailing slash.
+        // This is the key fix for the validation error.
+        pathSegment := "/";
+      };
     };
 
     switch (getEnvironment(hostFromHeader)) {
       case (#production) {
-        // In production, the host is a subdomain. Just append the path.
-        // e.g., "https://<canister_id>.icp0.io" + "/path"
+        // e.g., "https://<canister_id>.icp0.io" + "/"
+        // or "https://<canister_id>.icp0.io" + "/.well-known/..."
         return "https://" # hostFromHeader # pathSegment;
       };
       case (#local) {
-        // In local dev, we must insert the path BEFORE the query parameter.
         let baseUrl = "http://" # hostFromHeader;
         let canisterIdIsMissing = not Text.contains(hostFromHeader, #text(selfCanisterIdText));
 
         if (canisterIdIsMissing) {
           // Correct order: base_url + path + query_string
-          // e.g., "http://127.0.0.1:4943" + "/path" + "?canisterId=..."
+          // e.g., "http://127.0.0.1:4943" + "/" + "?canisterId=..."
           return baseUrl # pathSegment # "?canisterId=" # selfCanisterIdText;
         } else {
-          // This case is for local testing with subdomains, if ever needed.
           return baseUrl # pathSegment;
         };
       };
@@ -115,5 +126,10 @@ module {
     let stingified = Json.stringify(bodyJson, null);
 
     return Text.encodeUtf8(stingified);
+  };
+
+  // A helper function to ensure URIs are stored and looked up consistently.
+  public func normalizeUri(uri : Text) : Text {
+    return Text.trimEnd(uri, #char '/');
   };
 };

@@ -31,6 +31,9 @@ shared persistent actor class McpServer() = self {
   var stable_http_assets : HttpAssets.StableEntries = [];
   transient let http_assets = HttpAssets.init(stable_http_assets);
 
+  // Stable state for cached jwks responses.
+  var jwksCache = Map.new<Text, Map.Map<Text, AuthTypes.PublicKeyData>>();
+
   // --- STATE (Lives in the main actor) ---
   var resourceContents = [
     ("file:///main.py", "print('Hello from main.py!')"),
@@ -58,6 +61,7 @@ shared persistent actor class McpServer() = self {
     Principal.fromActor(self),
     issuerUrl,
     requiredScopes,
+    jwksCache,
     transformJwksResponse,
   );
 

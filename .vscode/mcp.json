@@ -1,0 +1,14 @@
+{
+	"servers": {
+		"private-mcp-server-live": {
+			"url": "https://cas54-cqaaa-aaaai-q32na-cai.icp0.io",
+			"type": "http"
+		},
+		"public-mcp-server-live": {
+			"url": "https://dd6u2-wiaaa-aaaai-q32lq-cai.icp0.io",
+			"type": "http"
+		},
+
+	},
+	"inputs": []
+}

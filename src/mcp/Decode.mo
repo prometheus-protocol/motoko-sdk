@@ -26,8 +26,6 @@ module {
 
   // The main decoder for the entire `initialize` params object.
   public func initializeParams(json : Types.JsonValue) : ?Types.InitializeParams {
-    Debug.print("--- Decoding initializeParams ---");
-    Debug.print(debug_show json);
     let params = do ? {
       let protocolVersion = Result.toOption(Json.getAsText(json, "protocolVersion"))!;
       let capabilities_json = Json.get(json, "capabilities")!;
@@ -38,8 +36,6 @@ module {
       return ?{ protocolVersion; capabilities; clientInfo = clientInfoValue };
     };
 
-    Debug.print("--- Decoded initializeParams successfully ---");
-    Debug.print(debug_show params);
     return params;
   };
 

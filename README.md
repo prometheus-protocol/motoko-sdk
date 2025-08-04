@@ -8,9 +8,12 @@ A comprehensive, robust, and developer-friendly SDK for building [Model Context 
 
 This SDK handles the low-level details of the MCP specification—including routing, protocol compliance, and connection management—allowing you to focus on defining your application's resources, tools, and logic.
 
-## Live Example
+## Live Examples
 
-Check out the live example server running on the Internet Computer: [MCP Example Server](https://dd6u2-wiaaa-aaaai-q32lq-cai.icp0.io).
+Check out the live example servers running on the Internet Computer: 
+
+- [Public MCP Example Server](https://remote-mcp-servers.com/servers/03e3732f-a617-4631-a1b1-5b489f26dd95).
+- [Private MCP Example Server](https://remote-mcp-servers.com/servers/6bc72920-c72b-4a80-b2f3-6b46c78de654).
 
 Connect to it using any MCP client including the [MCP Inspector](https://github.com/modelcontextprotocol/inspector).
 
@@ -18,7 +21,7 @@ Connect to it using any MCP client including the [MCP Inspector](https://github.
 
 This SDK is designed to be declarative. You define your server's capabilities by creating records and functions, and then pass them to the SDK to handle the rest.
 
-> **For a complete, runnable example, please see the `examples/mcp_server` directory in this repository.**
+> **For a complete, runnable example, please see the `examples/public_mcp_server` directory in this repository.**
 
 ### 1. Define Resources
 
@@ -110,7 +113,7 @@ To run the full example server included in this repository:
 
 1.  Navigate to the example directory:
     ```bash
-    cd examples/mcp_server
+    cd examples/public_mcp_server
     ```
 2.  Install dependencies and deploy:
     ```bash

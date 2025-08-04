@@ -11,39 +11,37 @@ import Types "Types";
 
 module {
   // This is the public function the developer will call.
-  public func startCleanupTimer<system>(ctx : Types.AppContext) : () {
+  public func startCleanupTimer<system>(ctx : Types.AuthContext) : () {
     // If a timer is already running, cancel it before starting a new one.
     switch (ctx.cleanupTimerId) {
       case (?id) { Timer.cancelTimer(id) };
       case (null) {};
     };
 
-    // Set a recurring timer for every 24 hours.
-    let interval = #nanoseconds(24 * 60 * 60 * 1_000_000_000);
+    // Set a recurring timer for every 1 hours.
+    let interval = #nanoseconds(1 * 60 * 60 * 1_000_000_000);
 
     // Define the cleanup function that will run on each timer tick.
     // It will remove any streams that have been inactive for more than 24 hours.
     func runCleanup() : async () {
       Debug.print("Running scheduled stream cleanup via Timer...");
-      let STALE_STREAM_TIMEOUT : Int = 24 * 60 * 60 * 1_000_000_000; // 24 hours
       let now = Time.now();
       var keysToRemove : [Text] = [];
 
-      for ((tokenKey, lastSeen) in Map.entries(ctx.activeStreams)) {
-        if (now > lastSeen + STALE_STREAM_TIMEOUT) {
-          keysToRemove := Array.append(keysToRemove, [tokenKey]);
+      for ((key, session) in Map.entries(ctx.sessionCache)) {
+        if (now > session.expiresAt) {
+          keysToRemove := Array.append(keysToRemove, [key]);
         };
       };
 
       for (key in keysToRemove.vals()) {
-        Map.delete(ctx.activeStreams, thash, key);
-        Map.delete(ctx.messageQueues, thash, key);
+        Map.delete(ctx.sessionCache, thash, key);
       };
-      Debug.print("Cleaned up " # Nat.toText(keysToRemove.size()) # " stale streams.");
+      Debug.print("Cleaned up " # Nat.toText(keysToRemove.size()) # " stale sessions.");
     };
 
     // The timer will call our cleanup function, passing the context.
     ctx.cleanupTimerId := ?Timer.recurringTimer<system>(interval, runCleanup);
-    Debug.print("Stream cleanup timer started.");
+    Debug.print("Auth cleanup timer started.");
   };
 };

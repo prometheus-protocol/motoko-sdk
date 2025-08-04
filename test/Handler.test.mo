@@ -38,7 +38,7 @@ await suite(
           case (#read(rep)) {
             // 3. Call the synchronous `call` function.
             let params = obj([("name", str("alice"))]);
-            let result = rep.call(params);
+            let result = rep.call(params, null);
 
             // 4. Check the Result from the call.
             switch (result) {
@@ -74,7 +74,7 @@ await suite(
           };
           case (#mutation(rep)) {
             // 3. Call the asynchronous `call` function.
-            let result = await rep.call(obj([]));
+            let result = await rep.call(obj([]), null);
 
             // 4. Check the Result from the call.
             switch (result) {
@@ -111,7 +111,7 @@ await suite(
           case (#read(rep)) {
             // 3. Call with invalid params.
             let invalid_params = obj([("username", str("alice"))]);
-            let result = rep.call(invalid_params);
+            let result = rep.call(invalid_params, null);
 
             // 4. Assert that the result is an #err.
             switch (result) {

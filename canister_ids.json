@@ -1,5 +1,8 @@
 {
-  "mcp_server": {
+  "private_mcp_server": {
+    "ic": "cas54-cqaaa-aaaai-q32na-cai"
+  },
+  "public_mcp_server": {
     "ic": "dd6u2-wiaaa-aaaai-q32lq-cai"
   }
 }

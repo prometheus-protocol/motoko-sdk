@@ -2,6 +2,7 @@ import Types "Types";
 import Args "Args";
 import Encode "Encode";
 import Result "mo:base/Result";
+import AuthTypes "../auth/Types";
 
 module {
   // A structured error type for handlers to return.
@@ -10,13 +11,12 @@ module {
     message : Text;
   };
 
-  // UPDATED: Both Reps now use HandlerError.
-  public type MutationRep = {
-    call : (Types.JsonValue) -> async Result.Result<Types.JsonValue, HandlerError>;
-  };
-
+  // Both Reps now use HandlerError.
   public type ReadRep = {
-    call : (Types.JsonValue) -> Result.Result<Types.JsonValue, HandlerError>;
+    call : (params : Types.JsonValue, auth : ?AuthTypes.AuthInfo) -> Result.Result<Types.JsonValue, HandlerError>;
+  };
+  public type MutationRep = {
+    call : (params : Types.JsonValue, auth : ?AuthTypes.AuthInfo) -> async Result.Result<Types.JsonValue, HandlerError>;
   };
 
   public type Handler = {
@@ -32,7 +32,7 @@ module {
     return_encoder : Encode.Encoder<R>,
   ) : Handler {
     let rep : MutationRep = {
-      call = func(_ : Types.JsonValue) : async Result.Result<Types.JsonValue, HandlerError> {
+      call = func(_ : Types.JsonValue, authInfo : ?AuthTypes.AuthInfo) : async Result.Result<Types.JsonValue, HandlerError> {
         var result_opt : ?R = null;
         let callback = func(result : R) { result_opt := ?result };
         await handle(callback);
@@ -56,7 +56,7 @@ module {
     return_encoder : Encode.Encoder<R>,
   ) : Handler {
     let rep : ReadRep = {
-      call = func(params : Types.JsonValue) : Result.Result<Types.JsonValue, HandlerError> {
+      call = func(params : Types.JsonValue, authInfo : ?AuthTypes.AuthInfo) : Result.Result<Types.JsonValue, HandlerError> {
         var result_opt : ?R = null;
         let callback = func(result : R) { result_opt := ?result };
         handle(callback);
@@ -83,7 +83,7 @@ module {
     return_encoder : Encode.Encoder<R>,
   ) : Handler {
     let rep : ReadRep = {
-      call = func(params : Types.JsonValue) : Result.Result<Types.JsonValue, HandlerError> {
+      call = func(params : Types.JsonValue, authInfo : ?AuthTypes.AuthInfo) : Result.Result<Types.JsonValue, HandlerError> {
         switch (arg_decoder(params)) {
           case (?arg1) {
             var result_opt : ?R = null;
@@ -115,7 +115,7 @@ module {
     return_encoder : Encode.Encoder<R>,
   ) : Handler {
     let rep : MutationRep = {
-      call = func(params : Types.JsonValue) : async Result.Result<Types.JsonValue, HandlerError> {
+      call = func(params : Types.JsonValue, authInfo : ?AuthTypes.AuthInfo) : async Result.Result<Types.JsonValue, HandlerError> {
         switch (arg_decoder(params)) {
           case (?arg1) {
             var result_opt : ?Result.Result<R, HandlerError> = null;

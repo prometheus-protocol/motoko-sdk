@@ -92,9 +92,6 @@ module {
     // 5. Define validation options using the reconstructed object.
     let verificationKey = #ecdsa(publicKeyObject);
 
-    Debug.print("Issuer URL: " # Utils.normalizeUri(ctx.issuerUrl));
-    Debug.print("Audience URL: " # Utils.normalizeUri(thisUrl));
-
     // 5. Define validation options and validate the token.
     let validationOptions : Jwt.ValidationOptions = {
       expiration = true;

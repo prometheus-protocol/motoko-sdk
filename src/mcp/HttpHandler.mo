@@ -6,6 +6,7 @@ import Blob "mo:base/Blob";
 import Time "mo:base/Time";
 import Nat64 "mo:base/Nat64";
 import Text "mo:base/Text";
+import Debug "mo:base/Debug";
 import BaseX "mo:base-x-encoder";
 import HttpTypes "mo:http-types";
 import Utils "Utils";
@@ -32,6 +33,21 @@ module {
     auth : ?AuthTypes.AuthContext;
     // The HTTP asset cache, if configured.
     http_asset_cache : ?CertifiedCache.CertifiedCache<Text, Blob>;
+  };
+
+  // Helper function to determine if a request is for a streaming response.
+  // According to the MCP spec, this is signaled by the 'Accept' header.
+  private func is_streaming_request(req : SrvTypes.HttpRequest) : Bool {
+    for (header in req.headers.vals()) {
+      // Headers are case-insensitive, so we should normalize the key.
+      if (Text.toLowercase(header.0) == "accept") {
+        // The value can be a list, e.g., "application/json, text/event-stream"
+        if (Text.contains(header.1, #text "text/event-stream")) {
+          return true;
+        };
+      };
+    };
+    return false;
   };
 
   // The public entry point for query calls.
@@ -70,7 +86,7 @@ module {
       };
     };
 
-    if (Text.contains(req.url, #text "transportType=streamable-http")) {
+    if (req.method == "GET" and is_streaming_request(req)) {
       // Handle the streaming handshake for clients like the MCP Inspector.
       let token_blob = Blob.fromArray(Utils.nat64ToBytes(Nat64.fromIntWrap(Time.now())));
       let token_key = BaseX.toBase64(token_blob.vals(), #standard({ includePadding = true }));
@@ -106,6 +122,7 @@ module {
   // The public entry point for update calls.
   public func http_request_update(ctx : Context, req : SrvTypes.HttpRequest) : async SrvTypes.HttpResponse {
     // All MCP logic is now routed through here, ensuring responses are certified.
+
     // --- Intercept metadata requests to perform certification ---
     if (req.method == "GET" and Text.contains(req.url, #text "/.well-known/oauth-protected-resource")) {
       switch (ctx.auth, ctx.http_asset_cache) {

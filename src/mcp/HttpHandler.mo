@@ -6,7 +6,7 @@ import Blob "mo:base/Blob";
 import Time "mo:base/Time";
 import Nat64 "mo:base/Nat64";
 import Text "mo:base/Text";
-import Debug "mo:base/Debug";
+import Option "mo:base/Option";
 import BaseX "mo:base-x-encoder";
 import HttpTypes "mo:http-types";
 import Utils "Utils";
@@ -48,6 +48,20 @@ module {
       };
     };
     return false;
+  };
+
+  public func http_request_streaming_callback(ctx : Context, token : HttpTypes.StreamingToken) : ?HttpTypes.StreamingCallbackResponse {
+    let tokenKey = BaseX.toBase64(token.vals(), #standard({ includePadding = true }));
+    // It has access to the actor's state.
+    if (Option.isNull(Map.get(ctx.active_streams, thash, tokenKey))) {
+      return ?{ body = Blob.fromArray([]); token = null };
+    };
+
+    // Update the timestamp to prove the stream is still active.
+    Map.set(ctx.active_streams, thash, tokenKey, Time.now());
+
+    let chunk = Text.encodeUtf8("data: {\"type\":\"keep-alive\"}\n\n");
+    return ?{ body = chunk; token = ?token };
   };
 
   // The public entry point for query calls.

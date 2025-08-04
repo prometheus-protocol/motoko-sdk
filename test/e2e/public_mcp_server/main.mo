@@ -1,14 +1,9 @@
 import Map "mo:map/Map";
 import { thash } "mo:map/Map";
 import Result "mo:base/Result";
-import Text "mo:base/Text";
-import Option "mo:base/Option";
-import Blob "mo:base/Blob";
-import Time "mo:base/Time";
 import Principal "mo:base/Principal";
 import Json "../../../src/json";
 import HttpTypes "mo:http-types";
-import BaseX "mo:base-x-encoder";
 
 // The only SDK import the user needs!
 import Mcp "../../../src/mcp/Mcp";

@@ -1,3 +1,17 @@
+# [1.1.0](https://github.com/prometheus-protocol/motoko-sdk/compare/v1.0.0...v1.1.0) (2025-08-04)
+
+
+### Bug Fixes
+
+* add new value to http outcall ([c55686a](https://github.com/prometheus-protocol/motoko-sdk/commit/c55686af747ba00a9e0f1399dc917e66de94fc11))
+* detect stream opening request according to spec ([d27250c](https://github.com/prometheus-protocol/motoko-sdk/commit/d27250c19386195fc2555b064fa5bda62f25ae23))
+* use mops package of ic management canister ([4a64a9f](https://github.com/prometheus-protocol/motoko-sdk/commit/4a64a9fe68394dba49354923f66e6c784eae90f2))
+
+
+### Features
+
+* add resource server metadata for oauth discovery ([4fd9f09](https://github.com/prometheus-protocol/motoko-sdk/commit/4fd9f09a5d22278334ba6d80a08db513ecbb6511))
+
 # 1.0.0 (2025-07-29)
 
 

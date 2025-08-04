@@ -164,19 +164,9 @@ shared persistent actor class McpServer() = self {
     return await HttpHandler.http_request_update(ctx, req);
   };
 
-  // The streaming callback MUST be a public function of the main actor.
   public query func http_request_streaming_callback(token : HttpTypes.StreamingToken) : async ?HttpTypes.StreamingCallbackResponse {
-    let token_key = BaseX.toBase64(token.vals(), #standard({ includePadding = true }));
-    // It has access to the actor's state.
-    if (Option.isNull(Map.get(appContext.activeStreams, thash, token_key))) {
-      return ?{ body = Blob.fromArray([]); token = null };
-    };
-
-    // Update the timestamp to prove the stream is still active.
-    Map.set(appContext.activeStreams, thash, token_key, Time.now());
-
-    let chunk = Text.encodeUtf8("data: {\"type\":\"keep-alive\"}\n\n");
-    return ?{ body = chunk; token = ?token };
+    let ctx : HttpHandler.Context = _create_http_context();
+    return HttpHandler.http_request_streaming_callback(ctx, token);
   };
 
   system func preupgrade() {

@@ -107,44 +107,30 @@ shared persistent actor class McpServer() = self {
 
   // --- PUBLIC ENTRY POINTS ---
 
-  // The streaming callback MUST be a public function of the main actor.
-  public query func http_request_streaming_callback(token : HttpTypes.StreamingToken) : async ?HttpTypes.StreamingCallbackResponse {
-    let token_key = BaseX.toBase64(token.vals(), #standard({ includePadding = true }));
-    // It has access to the actor's state.
-    if (Option.isNull(Map.get(appContext.activeStreams, thash, token_key))) {
-      return ?{ body = Blob.fromArray([]); token = null };
-    };
-
-    // Update the timestamp to prove the stream is still active.
-    Map.set(appContext.activeStreams, thash, token_key, Time.now());
-
-    let chunk = Text.encodeUtf8("data: {\"type\":\"keep-alive\"}\n\n");
-    return ?{ body = chunk; token = ?token };
-  };
-
-  public query func http_request(req : SrvTypes.HttpRequest) : async SrvTypes.HttpResponse {
-    // Construct the context object on the fly.
-    let ctx : HttpHandler.Context = {
-      self = Principal.fromActor(self); // Pass the server principal
+  // Helper to avoid repeating context creation.
+  private func _create_http_context() : HttpHandler.Context {
+    return {
+      self = Principal.fromActor(self);
       active_streams = appContext.activeStreams;
       mcp_server = mcpServer;
       streaming_callback = http_request_streaming_callback;
-      auth = null; // No authentication in this example.
-      http_asset_cache = null; // No HTTP asset cache in this example.
+      auth = null;
+      http_asset_cache = null;
     };
-    // Delegate the complex logic to the handler module.
+  };
+
+  public query func http_request(req : SrvTypes.HttpRequest) : async SrvTypes.HttpResponse {
+    let ctx : HttpHandler.Context = _create_http_context();
     return HttpHandler.http_request(ctx, req);
   };
 
   public func http_request_update(req : SrvTypes.HttpRequest) : async SrvTypes.HttpResponse {
-    let ctx : HttpHandler.Context = {
-      self = Principal.fromActor(self); // Pass the server principal
-      active_streams = appContext.activeStreams;
-      mcp_server = mcpServer;
-      streaming_callback = http_request_streaming_callback;
-      auth = null; // No authentication in this example.
-      http_asset_cache = null; // No HTTP asset cache in this example.
-    };
+    let ctx : HttpHandler.Context = _create_http_context();
     return await HttpHandler.http_request_update(ctx, req);
+  };
+
+  public query func http_request_streaming_callback(token : HttpTypes.StreamingToken) : async ?HttpTypes.StreamingCallbackResponse {
+    let ctx : HttpHandler.Context = _create_http_context();
+    return HttpHandler.http_request_streaming_callback(ctx, token);
   };
 };

@@ -18,7 +18,7 @@ export async function setup() {
     // This will create new canister IDs for this specific test run.
     console.log('   - Deploying test canisters for the test environment...');
     // We capture stderr to show build output, which can be useful for debugging.
-    const deployProcess = execAsync('dfx deploy test_public_mcp_server; dfx deploy test_private_mcp_server');
+    const deployProcess = execAsync('dfx deploy test_public_mcp_server --no-wallet; dfx deploy test_private_mcp_server --no-wallet');
     deployProcess.child.stderr?.pipe(process.stderr);
     await deployProcess;
     console.log('   - Canisters deployed successfully.');

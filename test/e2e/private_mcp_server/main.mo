@@ -14,6 +14,7 @@ import BaseX "mo:base-x-encoder";
 import Mcp "../../../src/mcp/Mcp";
 import McpTypes "../../../src/mcp/Types";
 import AuthTypes "../../../src/auth/Types";
+import AuthCleanup "../../../src/auth/Cleanup";
 import HttpHandler "../../../src/mcp/HttpHandler";
 import SrvTypes "../../../src/server/Types";
 import Cleanup "../../../src/mcp/Cleanup";
@@ -30,9 +31,6 @@ shared persistent actor class McpServer() = self {
   // State for certified HTTP assets (like /.well-known/...)
   var stable_http_assets : HttpAssets.StableEntries = [];
   transient let http_assets = HttpAssets.init(stable_http_assets);
-
-  // Stable state for cached jwks responses.
-  var jwksCache = Map.new<Text, Map.Map<Text, AuthTypes.PublicKeyData>>();
 
   // --- STATE (Lives in the main actor) ---
   var resourceContents = [
@@ -57,16 +55,16 @@ shared persistent actor class McpServer() = self {
   };
 
   // Initialize the auth context with the issuer URL and required scopes.
-  transient let authContext : AuthTypes.AuthContext = AuthState.init(
+  let authContext : AuthTypes.AuthContext = AuthState.init(
     Principal.fromActor(self),
     issuerUrl,
     requiredScopes,
-    jwksCache,
     transformJwksResponse,
   );
 
-  // --- Cleanup Timer For Deleting Old Streams ---
+  // --- Cleanup Timers ---
   Cleanup.startCleanupTimer<system>(appContext);
+  AuthCleanup.startCleanupTimer<system>(authContext);
 
   // --- 1. DEFINE YOUR RESOURCES & TOOLS ---
   var resources : [McpTypes.Resource] = [

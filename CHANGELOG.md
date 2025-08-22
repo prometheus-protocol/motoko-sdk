@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/prometheus-protocol/motoko-sdk/compare/v1.1.2...v1.2.0) (2025-08-22)
+
+
+### Features
+
+* specify the path to listen to mcp requests on ([161d70f](https://github.com/prometheus-protocol/motoko-sdk/commit/161d70feeff9242e45d252dc0f76eb7d00a8c412))
+
 ## [1.1.2](https://github.com/prometheus-protocol/motoko-sdk/compare/v1.1.1...v1.1.2) (2025-08-22)
 
 

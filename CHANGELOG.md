@@ -1,3 +1,10 @@
+## [1.1.2](https://github.com/prometheus-protocol/motoko-sdk/compare/v1.1.1...v1.1.2) (2025-08-22)
+
+
+### Bug Fixes
+
+* ignore query params when serving metadata ([e097f0d](https://github.com/prometheus-protocol/motoko-sdk/commit/e097f0dd6fe80292667ca7a0d4daa6d7e165f440))
+
 ## [1.1.1](https://github.com/prometheus-protocol/motoko-sdk/compare/v1.1.0...v1.1.1) (2025-08-22)
 
 

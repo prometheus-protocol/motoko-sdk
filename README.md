@@ -100,7 +100,7 @@ The SDK takes this config and generates a fully compliant MCP server.
 
 The SDK uses a low-cost `Timer` to automatically clean up stale client connections, preventing memory leaks and keeping hosting costs low.
 
-Because timers are not automatically restored after a canister upgrade, **it is essential to add the `post_upgrade` system function to your `main.mo` file.** The SDK provides a simple `Cleanup` module for this.
+Because timers are not automatically restored after a canister upgrade.
 
 ```motoko
 // In your main.mo, after setting up your state...

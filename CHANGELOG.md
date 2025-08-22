@@ -1,3 +1,11 @@
+## [1.1.1](https://github.com/prometheus-protocol/motoko-sdk/compare/v1.1.0...v1.1.1) (2025-08-22)
+
+
+### Bug Fixes
+
+* remove outdated info from readme and trigger publish ([8a7117d](https://github.com/prometheus-protocol/motoko-sdk/commit/8a7117d7eb7e18df05cfcd274e523c5d87b68e8d))
+* remove pre build step and rely on test to deploy test canisters ([4776e57](https://github.com/prometheus-protocol/motoko-sdk/commit/4776e576770a94783acc83ea294291bf9d9bee87))
+
 # [1.1.0](https://github.com/prometheus-protocol/motoko-sdk/compare/v1.0.0...v1.1.0) (2025-08-04)
 
 

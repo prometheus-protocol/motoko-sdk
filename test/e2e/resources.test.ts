@@ -7,6 +7,7 @@ dotenv.config({ path: path.resolve(__dirname, '.test.env') });
 
 const canisterId = process.env.E2E_CANISTER_ID_PUBLIC!;
 const replicaUrl = process.env.E2E_REPLICA_URL!;
+const mcpPath = '/mcp';
 
 const createRpcPayload = (method: string, params: any, id: number) => ({
   jsonrpc: '2.0',
@@ -26,7 +27,7 @@ describe('MCP Resources', () => {
     // Arrange: The `resources/list` method takes no parameters.
     const payload = createRpcPayload('resources/list', {}, 1);
 
-    const url = new URL(replicaUrl);
+    const url = new URL(mcpPath,replicaUrl);
     url.searchParams.set('canisterId', canisterId);
 
     // Act
@@ -62,7 +63,7 @@ describe('MCP Resources', () => {
     // Arrange
     const params = { uri: 'file:///main.py' };
     const payload = createRpcPayload('resources/read', params, 2);
-    const url = new URL(replicaUrl);
+    const url = new URL(mcpPath, replicaUrl);
     url.searchParams.set('canisterId', canisterId);
 
     // Act

@@ -2,6 +2,8 @@ import Map "mo:map/Map";
 import { thash } "mo:map/Map";
 import Result "mo:base/Result";
 import Principal "mo:base/Principal";
+import Text "mo:base/Text";
+import Blob "mo:base/Blob";
 import Json "mo:json";
 import HttpTypes "mo:http-types";
 
@@ -111,17 +113,65 @@ shared persistent actor class McpServer() = self {
       streaming_callback = http_request_streaming_callback;
       auth = null;
       http_asset_cache = null;
+      mcp_path = ?"/mcp"; // All MCP requests must start with /mcp
     };
   };
 
   public query func http_request(req : SrvTypes.HttpRequest) : async SrvTypes.HttpResponse {
     let ctx : HttpHandler.Context = _create_http_context();
-    return HttpHandler.http_request(ctx, req);
+    // Ask the SDK to handle the request
+    switch (HttpHandler.http_request(ctx, req)) {
+      case (?mcpResponse) {
+        // The SDK handled it, so we return its response.
+        return mcpResponse;
+      };
+      case (null) {
+        // The SDK ignored it. Now we can handle our own custom routes.
+        if (req.url == "/") {
+          // e.g., Serve a frontend asset
+          return {
+            status_code = 200;
+            headers = [("Content-Type", "text/html")];
+            body = Text.encodeUtf8("<h1>My Canister Frontend</h1>");
+            upgrade = null;
+            streaming_strategy = null;
+          };
+        } else {
+          // Return a 404 for any other unhandled routes.
+          return {
+            status_code = 404;
+            headers = [];
+            body = Blob.fromArray([]);
+            upgrade = null;
+            streaming_strategy = null;
+          };
+        };
+      };
+    };
   };
 
-  public func http_request_update(req : SrvTypes.HttpRequest) : async SrvTypes.HttpResponse {
+  public shared func http_request_update(req : SrvTypes.HttpRequest) : async SrvTypes.HttpResponse {
     let ctx : HttpHandler.Context = _create_http_context();
-    return await HttpHandler.http_request_update(ctx, req);
+
+    // Ask the SDK to handle the request
+    let mcpResponse = await HttpHandler.http_request_update(ctx, req);
+
+    switch (mcpResponse) {
+      case (?res) {
+        // The SDK handled it.
+        return res;
+      };
+      case (null) {
+        // The SDK ignored it. Handle custom update calls here.
+        return {
+          status_code = 404;
+          headers = [];
+          body = Blob.fromArray([]);
+          upgrade = null;
+          streaming_strategy = null;
+        };
+      };
+    };
   };
 
   public query func http_request_streaming_callback(token : HttpTypes.StreamingToken) : async ?HttpTypes.StreamingCallbackResponse {

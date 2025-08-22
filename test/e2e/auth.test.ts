@@ -14,6 +14,7 @@ const mockAuthServerUrl = process.env.E2E_MOCK_AUTH_SERVER_URL!;
 // --- Test State ---
 let jwtPrivateKey: jose.CryptoKey;
 
+const mcpPath = '/mcp';
 const resourceServerUrl = new URL(replicaUrl);
 resourceServerUrl.searchParams.set('canisterId', canisterId);
 
@@ -30,7 +31,7 @@ describe('MCP Authentication and Discovery', () => {
   test('should return a 401 with a correct WWW-Authenticate header for unauthenticated requests', async () => {
     // ARRANGE
     const payload = { jsonrpc: '2.0', method: 'tools/call', params: { name: 'get_weather', arguments: { location: 'Tokyo' } }, id: 'www-auth-test' };
-    const rpcUrl = new URL(replicaUrl);
+    const rpcUrl = new URL(mcpPath, replicaUrl);
     rpcUrl.searchParams.set('canisterId', canisterId);
 
     // The canister should construct the metadata URL based on the request's URL.
@@ -57,7 +58,7 @@ describe('MCP Authentication and Discovery', () => {
   test('should perform the full auth discovery flow on an unauthenticated request', async () => {
     // ARRANGE: A standard protected tool call payload
     const payload = { jsonrpc: '2.0', method: 'tools/call', params: { name: 'get_weather', arguments: { location: 'Tokyo' } }, id: 'discovery-test' };
-    const rpcUrl = new URL(replicaUrl);
+    const rpcUrl = new URL(mcpPath, replicaUrl);
     rpcUrl.searchParams.set('canisterId', canisterId);
 
     // STEP 1: Make an unauthenticated call and expect a 401
@@ -126,7 +127,7 @@ describe('MCP Authentication and Discovery', () => {
       .sign(jwtPrivateKey);
 
     const payload = { jsonrpc: '2.0', method: 'tools/call', params: { name: 'get_weather', arguments: { location: 'Tokyo' } }, id: 1 };
-    const url = new URL(replicaUrl);
+    const url = new URL(mcpPath, replicaUrl);
     url.searchParams.set('canisterId', canisterId);
 
     // Act

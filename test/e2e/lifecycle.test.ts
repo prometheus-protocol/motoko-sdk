@@ -8,6 +8,7 @@ dotenv.config({ path: path.resolve(__dirname, '.test.env') });
 // --- Test Configuration ---
 const canisterId = process.env.E2E_CANISTER_ID_PUBLIC!;
 const replicaUrl = process.env.E2E_REPLICA_URL!;
+const mcpPath = '/mcp';
 
 // Helper to create a valid JSON-RPC request payload.
 const createRpcPayload = (method: string, params: any, id: number) => ({
@@ -43,7 +44,7 @@ describe('MCP Lifecycle', () => {
     const payload = createRpcPayload('initialize', initializeParams, 1);
 
     // Construct the fetch URL and options
-    const url = new URL(replicaUrl);
+    const url = new URL(mcpPath, replicaUrl);
     url.searchParams.set('canisterId', canisterId);
 
     // Act: Send the request to the canister.
@@ -78,7 +79,7 @@ describe('MCP Lifecycle', () => {
       // No 'id' or 'params' for a notification
     };
 
-    const url = new URL(replicaUrl);
+    const url = new URL(mcpPath, replicaUrl);
     url.searchParams.set('canisterId', canisterId);
 
     // Act: Send the notification.

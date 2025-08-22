@@ -11,6 +11,7 @@ dotenv.config({ path: path.resolve(__dirname, '.test.env') });
 
 const canisterId = process.env.E2E_CANISTER_ID_PUBLIC!;
 const replicaUrl = process.env.E2E_REPLICA_URL!;
+const mcpPath = '/mcp';
 
 describe('MCP Server Compliance via SDK', () => {
   let client: Client;
@@ -20,7 +21,7 @@ describe('MCP Server Compliance via SDK', () => {
       throw new Error('E2E environment variables not set.');
     }
 
-    const url = new URL(replicaUrl);
+    const url = new URL(mcpPath, replicaUrl);
     url.searchParams.set('canisterId', canisterId);
     const transport = new StreamableHTTPClientTransport(url);
 

@@ -33,6 +33,9 @@ module {
     auth : ?AuthTypes.AuthContext;
     // The HTTP asset cache, if configured.
     http_asset_cache : ?CertifiedCache.CertifiedCache<Text, Blob>;
+    // The base path for all MCP requests, e.g., "/mcp".
+    // The SDK will ignore any requests that do not start with this path.
+    mcp_path : ?Text;
   };
 
   // Helper function to determine if a request is for a streaming response.
@@ -65,7 +68,7 @@ module {
   };
 
   // The public entry point for query calls.
-  public func http_request(ctx : Context, req : SrvTypes.HttpRequest) : SrvTypes.HttpResponse {
+  public func http_request(ctx : Context, req : SrvTypes.HttpRequest) : ?SrvTypes.HttpResponse {
     if (req.method == "GET" and Text.contains(req.url, #text "/.well-known/oauth-protected-resource")) {
       switch (ctx.http_asset_cache) {
         case (?cache) {
@@ -94,7 +97,7 @@ module {
           switch (cache.get(clean_path)) {
             case (?bodyBlob) {
               // CACHE HIT: The library handles everything.
-              return {
+              return ?{
                 status_code = 200;
                 headers = [
                   ("Content-Type", "application/json"),
@@ -107,7 +110,7 @@ module {
             };
             case (null) {
               // CACHE MISS: Instruct the client to upgrade.
-              return {
+              return ?{
                 status_code = 204;
                 headers = [];
                 body = Blob.fromArray([]);
@@ -121,6 +124,13 @@ module {
       };
     };
 
+    // --- 2. Check if the request is for the configured MCP path ---
+    let mcpUrl = Option.get(ctx.mcp_path, "/mcp");
+    if (not Text.startsWith(req.url, #text mcpUrl)) {
+      // This is not an MCP request. Signal the caller to handle it.
+      return null;
+    };
+
     if (req.method == "GET" and is_streaming_request(req)) {
       // Handle the streaming handshake for clients like the MCP Inspector.
       let token_blob = Blob.fromArray(Utils.nat64ToBytes(Nat64.fromIntWrap(Time.now())));
@@ -132,7 +142,7 @@ module {
         token = token_blob;
       });
 
-      return {
+      return ?{
         status_code = 200;
         headers = [("Content-Type", "text/event-stream")];
         body = Blob.fromArray([]);
@@ -144,7 +154,7 @@ module {
       // For any other request, we don't handle it here. We immediately
       // instruct the client to upgrade to an update call. This ensures
       // all responses are certified via consensus.
-      return {
+      return ?{
         status_code = 204; // 204 No Content is a standard way to signal an upgrade.
         headers = [];
         body = Blob.fromArray([]);
@@ -155,7 +165,7 @@ module {
   };
 
   // The public entry point for update calls.
-  public func http_request_update(ctx : Context, req : SrvTypes.HttpRequest) : async SrvTypes.HttpResponse {
+  public func http_request_update(ctx : Context, req : SrvTypes.HttpRequest) : async ?SrvTypes.HttpResponse {
     // All MCP logic is now routed through here, ensuring responses are certified.
 
     // --- Intercept metadata requests to perform certification ---
@@ -169,7 +179,7 @@ module {
           cache.put(req.url, bodyBlob, null);
 
           // 3. Return a simple, uncertified 200 OK.
-          return {
+          return ?{
             status_code = 200;
             headers = [("Content-Type", "application/json")];
             body = bodyBlob;
@@ -179,6 +189,13 @@ module {
         };
         case (_, _) { /* Handle error */ };
       };
+    };
+
+    // --- 2. Check if the request is for the configured MCP path ---
+    let mcpUrl = Option.get(ctx.mcp_path, "/mcp");
+    if (not Text.startsWith(req.url, #text mcpUrl)) {
+      // This is not an MCP request. Signal the caller to handle it.
+      return null;
     };
 
     // Check if authentication is configured on the server.
@@ -192,18 +209,18 @@ module {
         switch (authResult) {
           case (#err(httpResponse)) {
             // Auth failed, return the error response immediately.
-            return httpResponse;
+            return ?httpResponse;
           };
           case (#ok(authInfo)) {
             // Auth succeeded, handle the request with the trusted auth info.
-            return await ctx.mcp_server.handle_request(req, ?authInfo);
+            return ?(await ctx.mcp_server.handle_request(req, ?authInfo));
           };
         };
       };
       case (_) {
         // --- AUTH IS OFF ---
         // No auth config, so proceed without authentication.
-        return await ctx.mcp_server.handle_request(req, null);
+        return ?(await ctx.mcp_server.handle_request(req, null));
       };
     };
   };

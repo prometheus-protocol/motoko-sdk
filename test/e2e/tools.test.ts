@@ -7,6 +7,7 @@ dotenv.config({ path: path.resolve(__dirname, '.test.env') });
 
 const canisterId = process.env.E2E_CANISTER_ID_PUBLIC!;
 const replicaUrl = process.env.E2E_REPLICA_URL!;
+const mcpPath = '/mcp';
 
 const createRpcPayload = (method: string, params: any, id: number) => ({
   jsonrpc: '2.0',
@@ -26,7 +27,7 @@ describe('MCP Tools', () => {
     // Arrange: The `tools/list` method takes no parameters.
     const payload = createRpcPayload('tools/list', {}, 1);
 
-    const url = new URL(replicaUrl);
+    const url = new URL(mcpPath, replicaUrl);
     url.searchParams.set('canisterId', canisterId);
 
     // Act
@@ -79,7 +80,7 @@ describe('MCP Tools', () => {
     };
     const payload = createRpcPayload('tools/call', params, 2);
 
-    const url = new URL(replicaUrl);
+    const url = new URL(mcpPath, replicaUrl);
     url.searchParams.set('canisterId', canisterId);
 
     // Act
@@ -117,7 +118,7 @@ describe('MCP Tools', () => {
     // Arrange
     const params = { name: 'get_stock_price', arguments: { ticker: 'ACME' } };
     const payload = createRpcPayload('tools/call', params, 3);
-    const url = new URL(replicaUrl);
+    const url = new URL(mcpPath, replicaUrl);
     url.searchParams.set('canisterId', canisterId);
 
     // Act

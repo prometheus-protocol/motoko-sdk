@@ -2,7 +2,7 @@ import Map "mo:map/Map";
 import { thash } "mo:map/Map";
 import Text "mo:base/Text";
 import Result "mo:base/Result";
-import Json "../json";
+import Json "mo:json";
 import AuthTypes "../auth/Types";
 import Handler "Handler";
 import Types "Types";

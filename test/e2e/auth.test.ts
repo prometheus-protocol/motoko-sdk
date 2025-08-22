@@ -78,9 +78,7 @@ describe('MCP Authentication and Discovery', () => {
     const metadataUrlString = match![1]; // This is the full URL for the metadata
     
     // STEP 3: Call the metadata URL to discover the auth server
-    // Add cache busting query param to ensure we get the latest metadata
     const metadataUrl = new URL(metadataUrlString);
-    metadataUrl.searchParams.set('cache_bust', Date.now().toString());
 
     const metadataResponse = await fetch(metadataUrl.toString());
     expect(metadataResponse.status).toBe(200);
@@ -146,5 +144,26 @@ describe('MCP Authentication and Discovery', () => {
     expect(response.status).toBe(200);
     expect(json.error).toBeUndefined();
     expect(json.result.content[0].text).toContain('Tokyo');
+  });
+
+   test('should return certified metadata even when the URL has query parameters', async () => {
+    // ARRANGE: Construct the metadata URL directly, simulating a local development environment
+    // where the canister ID is passed as a query parameter. We add an extra dummy
+    // parameter to ensure the Motoko fix is robust and handles more than just `canisterId`.
+    const metadataUrl = new URL(replicaUrl);
+    metadataUrl.searchParams.set('canisterId', canisterId);
+    metadataUrl.searchParams.set('source', 'e2e-test'); // Dummy parameter
+    metadataUrl.pathname = '/.well-known/oauth-protected-resource';
+
+    // ACT: Fetch the metadata endpoint directly.
+    const response = await fetch(metadataUrl.toString());
+
+    // ASSERT: The request should succeed with a 200 OK, and the body should be correct.
+    // This verifies that our Motoko workaround for the certification library bug is effective.
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toBeDefined();
+    expect(body.authorization_servers).toBeInstanceOf(Array);
+    expect(body.authorization_servers[0]).toBe(mockAuthServerUrl);
   });
 });

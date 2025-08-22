@@ -1,4 +1,4 @@
-import Json "../json";
+import Json "mo:json";
 import Array "mo:base/Array";
 import Types "Types";
 import ServerEncode "../server/Encode"

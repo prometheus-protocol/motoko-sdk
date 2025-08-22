@@ -1,4 +1,4 @@
-import Json "../json";
+import Json "mo:json";
 import Result "mo:base/Result";
 import Debug "mo:base/Debug";
 import Types "Types"; // Our MCP Types

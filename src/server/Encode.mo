@@ -1,6 +1,6 @@
 // src/lib/Decode.mo
 import Types "Types";
-import Json "../json";
+import Json "mo:json";
 import Nat "mo:base/Nat";
 import Array "mo:base/Array";
 

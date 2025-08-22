@@ -69,15 +69,36 @@ module {
     if (req.method == "GET" and Text.contains(req.url, #text "/.well-known/oauth-protected-resource")) {
       switch (ctx.http_asset_cache) {
         case (?cache) {
+          // --- START: WORKAROUND FOR CERTIFICATION BUG ---
+          // The certification library can fail if the URL contains query parameters.
+          // We split the URL by '?' and take the first part to get a clean path.
+          let clean_path : Text = do {
+            // Text.split returns an iterator.
+            let iter = Text.split(req.url, #char '?');
+            // We take the first element from the iterator.
+            switch (iter.next()) {
+              case (null) {
+                // This case only occurs if the original URL was empty.
+                "";
+              };
+              case (?path) {
+                // We successfully got the first part of the split.
+                // The `_` ignores the rest of the iterator.
+                path;
+              };
+            };
+          };
+          // --- END: WORKAROUND ---
+
           // 1. Check the cache.
-          switch (cache.get(req.url)) {
+          switch (cache.get(clean_path)) {
             case (?bodyBlob) {
               // CACHE HIT: The library handles everything.
               return {
                 status_code = 200;
                 headers = [
                   ("Content-Type", "application/json"),
-                  cache.certificationHeader(req.url) // The library builds the header!
+                  cache.certificationHeader(clean_path) // The library builds the header!
                 ];
                 body = bodyBlob;
                 upgrade = null;

@@ -3,7 +3,7 @@ import Blob "mo:base/Blob";
 import Text "mo:base/Text";
 import Result "mo:base/Result";
 import BaseX "mo:base-x-encoder";
-import Json "../src/json";
+import Json "mo:json";
 import Debug "mo:base/Debug";
 import Nat "mo:base/Nat";
 import Nat8 "mo:base/Nat8";

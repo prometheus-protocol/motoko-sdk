@@ -1,6 +1,6 @@
 // src/lib/Rpc.mo
 
-import Json "../json";
+import Json "mo:json";
 import Array "mo:base/Array";
 import Option "mo:base/Option";
 import Types "Types";

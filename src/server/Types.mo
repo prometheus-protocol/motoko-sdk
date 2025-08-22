@@ -1,5 +1,5 @@
 // src/lib/Types.mo
-import Json "../json";
+import Json "mo:json";
 import HttpTypes "mo:http-types";
 
 module {

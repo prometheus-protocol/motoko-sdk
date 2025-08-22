@@ -1,6 +1,6 @@
 import Principal "mo:base/Principal";
 import Nat "mo:base/Nat";
-import Json "../json";
+import Json "mo:json";
 import Types "Types";
 
 module {

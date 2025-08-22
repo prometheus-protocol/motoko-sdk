@@ -2,7 +2,7 @@ import Map "mo:map/Map";
 import { thash } "mo:map/Map";
 import Result "mo:base/Result";
 import Array "mo:base/Array";
-import Json "../json";
+import Json "mo:json";
 
 // Internal SDK imports
 import Server "../server/Server";

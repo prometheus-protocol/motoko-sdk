@@ -1,5 +1,5 @@
 import { test; suite; expect } "mo:test/async";
-import { str; int; obj; stringify } "../src/json";
+import { str; int; obj; stringify } "mo:json";
 import Nat "mo:base/Nat";
 import Text "mo:base/Text";
 

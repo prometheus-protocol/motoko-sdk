@@ -1,5 +1,5 @@
 import { test; suite; expect } "mo:test/async";
-import { obj; str; int; nullable } "../src/json";
+import { obj; str; int; nullable } "mo:json";
 import Text "mo:base/Text";
 
 // Modules to test

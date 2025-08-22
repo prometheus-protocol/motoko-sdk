@@ -2,7 +2,7 @@ import Map "mo:map/Map";
 import { thash } "mo:map/Map";
 import Result "mo:base/Result";
 import Principal "mo:base/Principal";
-import Json "../../../src/json";
+import Json "mo:json";
 import HttpTypes "mo:http-types";
 
 // The only SDK import the user needs!

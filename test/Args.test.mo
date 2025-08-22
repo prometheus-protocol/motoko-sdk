@@ -1,7 +1,7 @@
 import Principal "mo:base/Principal";
 import Text "mo:base/Text";
 import Nat "mo:base/Nat";
-import { obj; str; int; nullable; arr } "../src/json";
+import { obj; str; int; nullable; arr } "mo:json";
 import { test; suite; expect } "mo:test/async";
 
 // The modules we are testing and their dependencies

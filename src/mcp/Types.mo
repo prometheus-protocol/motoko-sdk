@@ -1,4 +1,4 @@
-import Json "../json";
+import Json "mo:json";
 import Map "mo:map/Map";
 import Time "mo:base/Time";
 import Timer "mo:base/Timer";

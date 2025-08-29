@@ -68,10 +68,9 @@ module {
       ),
     );
 
-    // 3. `resources/read` handler
+    // 3. `resources/read` handler (as an inefficient update call)
     let resourcesReadHandler = (
       "resources/read",
-      // CRITICAL: Changed from query1 to update1 to support payments
       Handler.update1<Types.ReadResourceParams, Types.ReadResourceResult>(
         func(params : Types.ReadResourceParams, auth : ?AuthTypes.AuthInfo, cb : (Result.Result<Types.ReadResourceResult, Handler.HandlerError>) -> ()) : async () {
           let resource_meta = Array.find<Types.Resource>(config.resources, func(r) { r.uri == params.uri });
@@ -81,21 +80,8 @@ module {
               cb(#err({ code = -32000; message = "Resource not found: " # params.uri; data = null }));
             };
             case (?meta) {
-              // Check for payment requirement
-              switch (meta.payment) {
-                case (?paymentInfo) {
-                  let paymentResult = await Payments.handlePayment(paymentInfo, config.self, auth, config.allowanceUrl);
-                  switch (paymentResult) {
-                    case (#ok(_)) {}; // Payment succeeded, continue to serve the resource.
-                    case (#err(handlerError)) {
-                      return cb(#err(handlerError)); // Propagate the payment error.;
-                    };
-                  };
-                };
-                case (null) {};
-              };
 
-              // If we reach here, payment was successful or not required.
+              // Payment is no longer required, so we proceed directly to serving the resource.
               let content_text = config.resourceReader(params.uri);
               switch (content_text) {
                 case (?text) {

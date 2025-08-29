@@ -8,7 +8,7 @@
   },
   "scripts": {
     "prepare": "husky",
-    "test": "npm run test:e2e && npm run test:motoko",
+    "test": "npm run test:motoko && npm run test:canisters && npm run test:e2e",
     "test:motoko": "mops test",
     "test:canisters": "vitest --project picjs-tests",
     "test:e2e": "vitest --project e2e-tests"

@@ -85,7 +85,6 @@ module {
     title : ?Text;
     description : ?Text;
     mimeType : ?Text;
-    payment : ?PaymentInfo;
     // We'll omit size and annotations for now for simplicity, but can add them later.
   };
 

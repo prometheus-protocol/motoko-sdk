@@ -41,12 +41,34 @@ jobs:
       - name: Run e2e tests
         run: npm run test:e2e # Using a dedicated script for clarity
 
+  # This job runs in parallel with motoko-tests.
+  canister-tests:
+    name: Canister Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm ci # 'ci' is faster and safer for CI environments
+      - name: Install DFX
+        uses: dfinity/setup-dfx@main
+      - name: Start dfx
+        run: dfx start --background --clean
+      - name: Generate Declarations
+        run: dfx generate test_paid_mcp_server && dfx generate icrc1_ledger
+      - uses: ZenVoich/setup-mops@v1
+      - name: Run canister tests
+        run: npm run test:canisters # Using a dedicated script for clarity
+
   # --- JOB 3: Release (The Final Step) ---
   # This job only runs if the other jobs succeed AND we are on the main branch.
   release:
     name: Release
     # This is the key: it makes this job wait for the other jobs to succeed.
-    needs: [motoko-tests, e2e-tests]
+    needs: [motoko-tests, e2e-tests, canister-tests]
     # This condition ensures it ONLY runs on a push to main, not on PRs.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -54,7 +76,7 @@ jobs:
     # Grant write permissions to the GITHUB_TOKEN for this job only.
     permissions:
       contents: write
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -76,5 +98,5 @@ jobs:
       - name: Release and Publish to Mops
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SKIP_HOOKS: "true"
+          SKIP_HOOKS: 'true'
         run: npx semantic-release

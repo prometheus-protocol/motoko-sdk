@@ -20,10 +20,6 @@
       "type": "motoko",
       "main": "test/picjs/paid_mcp_server/main.mo"
     },
-    "mock_auth_server": {
-      "type": "motoko",
-      "main": "test/picjs/mock_auth_server/main.mo"
-    },
     "icrc1_ledger": {
       "type": "custom",
       "candid": "https://github.com/dfinity/ic/releases/download/ledger-suite-icrc-2025-06-19/ledger.did",

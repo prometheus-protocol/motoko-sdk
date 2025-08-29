@@ -92,7 +92,6 @@ shared ({ caller = deployer }) persistent actor class McpServer({
       title = ?"Main Python Script";
       description = ?"Contains the main logic of the application.";
       mimeType = ?"text/x-python";
-      payment = null;
     },
     {
       uri = "file:///README.md";
@@ -100,7 +99,6 @@ shared ({ caller = deployer }) persistent actor class McpServer({
       title = ?"Project Documentation";
       description = null;
       mimeType = ?"text/markdown";
-      payment = null;
     },
   ];
 

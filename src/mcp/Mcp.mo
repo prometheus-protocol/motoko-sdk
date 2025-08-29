@@ -3,6 +3,10 @@ import { thash } "mo:map/Map";
 import Result "mo:base/Result";
 import Array "mo:base/Array";
 import Json "mo:json";
+import Principal "mo:base/Principal";
+import Debug "mo:base/Debug";
+import ICRC2 "mo:icrc2-types";
+import Error "mo:base/Error";
 
 // Internal SDK imports
 import Server "../server/Server";
@@ -13,19 +17,22 @@ import Encode "../server/Encode";
 import Types "Types";
 import Decode "Decode";
 import MCPEncode "Encode";
+import Payments "Payments";
+
+// SDK dependencies for monetization
+import AuthTypes "../auth/Types";
+import ErrorUtils "ErrorUtils";
 
 module {
-
-  // The main builder function for the SDK.
   public func createServer(config : Types.McpConfig) : Server.Server {
     // --- Auto-generated MCP Handlers ---
 
     // 1. `initialize` handler
     let initializeHandler = (
       "initialize",
+      // MODIFIED: Signature updated to match new Handler.mo
       Handler.query1<Types.InitializeParams, Types.InitializeResult>(
-        func(params, cb) {
-          // Define the capabilities our server actually supports.
+        func(params, auth, cb) {
           let capabilities : Types.ServerCapabilities = {
             logging = null; // We don't support this.
             prompts = null; // We don't support this.
@@ -41,14 +48,8 @@ module {
               listChanged = null;
             };
           };
-
-          // Construct the full, correct response.
-          cb({
-            protocolVersion = params.protocolVersion;
-            capabilities = capabilities;
-            serverInfo = config.serverInfo;
-            instructions = ?"Welcome to the Motoko MCP Server!";
-          });
+          // MODIFIED: Callback now wraps result in #ok
+          cb(#ok({ protocolVersion = params.protocolVersion; capabilities = capabilities; serverInfo = config.serverInfo; instructions = ?"Welcome to the Motoko MCP Server!" }));
         },
         Decode.initializeParams,
         MCPEncode.initializeResult,
@@ -58,8 +59,11 @@ module {
     // 2. `resources/list` handler
     let resourcesListHandler = (
       "resources/list",
+      // MODIFIED: Signature updated
       Handler.query0<Types.ListResourcesResult>(
-        func(cb) { cb({ resources = config.resources; nextCursor = null }) },
+        func(auth, cb) {
+          cb(#ok({ resources = config.resources; nextCursor = null }));
+        },
         MCPEncode.listResourcesResult,
       ),
     );
@@ -67,29 +71,48 @@ module {
     // 3. `resources/read` handler
     let resourcesReadHandler = (
       "resources/read",
-      Handler.query1<Types.ReadResourceParams, Types.ReadResourceResult>(
-        func(params, cb) {
-          // Find the resource metadata and content.
+      // CRITICAL: Changed from query1 to update1 to support payments
+      Handler.update1<Types.ReadResourceParams, Types.ReadResourceResult>(
+        func(params : Types.ReadResourceParams, auth : ?AuthTypes.AuthInfo, cb : (Result.Result<Types.ReadResourceResult, Handler.HandlerError>) -> ()) : async () {
           let resource_meta = Array.find<Types.Resource>(config.resources, func(r) { r.uri == params.uri });
-          let content_text = config.resourceReader(params.uri);
 
-          switch (resource_meta, content_text) {
-            case (?meta, ?text) {
-              // Found both! Construct the response.
-              let content_block : Types.ResourceContent = {
-                uri = meta.uri;
-                name = meta.name;
-                title = meta.title;
-                mimeType = meta.mimeType;
-                text = ?text;
-                blob = null;
-              };
-              cb({ contents = [content_block] });
+          switch (resource_meta) {
+            case (null) {
+              cb(#err({ code = -32000; message = "Resource not found: " # params.uri; data = null }));
             };
-            case (_, _) {
-              // Not found. Return an empty list of contents.
-              // A proper implementation would return a JSON-RPC error. We'll add that later.
-              cb({ contents = [] });
+            case (?meta) {
+              // Check for payment requirement
+              switch (meta.payment) {
+                case (?paymentInfo) {
+                  let paymentResult = await Payments.handlePayment(paymentInfo, config.self, auth, config.allowanceUrl);
+                  switch (paymentResult) {
+                    case (#ok(_)) {}; // Payment succeeded, continue to serve the resource.
+                    case (#err(handlerError)) {
+                      return cb(#err(handlerError)); // Propagate the payment error.;
+                    };
+                  };
+                };
+                case (null) {};
+              };
+
+              // If we reach here, payment was successful or not required.
+              let content_text = config.resourceReader(params.uri);
+              switch (content_text) {
+                case (?text) {
+                  let content_block : Types.ResourceContent = {
+                    uri = meta.uri;
+                    name = meta.name;
+                    title = meta.title;
+                    mimeType = meta.mimeType;
+                    text = ?text;
+                    blob = null;
+                  };
+                  cb(#ok({ contents = [content_block] }));
+                };
+                case (null) {
+                  cb(#err({ code = -32000; message = "Resource content not found for URI: " # params.uri; data = null }));
+                };
+              };
             };
           };
         },
@@ -101,8 +124,9 @@ module {
     // 4. `tools/list` handler
     let toolsListHandler = (
       "tools/list",
+      // MODIFIED: Signature updated
       Handler.query0<Types.ListToolsResult>(
-        func(cb) { cb({ tools = config.tools; nextCursor = null }) },
+        func(auth, cb) { cb(#ok({ tools = config.tools; nextCursor = null })) },
         MCPEncode.listToolsResult,
       ),
     );
@@ -112,11 +136,42 @@ module {
     let toolCallHandler = (
       "tools/call",
       Handler.update1<Types.CallToolParams, Types.CallToolResult>(
-        func(params : Types.CallToolParams, cb : (Result.Result<Types.CallToolResult, Types.HandlerError>) -> ()) : async () {
-          switch (Map.get(toolDispatcher, thash, params.name)) {
-            case (?fn) { fn(params.arguments, null, cb) };
+        func(params : Types.CallToolParams, auth : ?AuthTypes.AuthInfo, cb : (Result.Result<Types.CallToolResult, Handler.HandlerError>) -> ()) : async () {
+          let tool_def = Array.find<Types.Tool>(config.tools, func(t) { t.name == params.name });
+          switch (tool_def) {
             case (null) {
-              cb(#err({ code = -32602; message = "Unknown tool: " # params.name }));
+              cb(#err({ code = -32602; message = "Unknown tool: " # params.name; data = null }));
+            };
+            case (?tool) {
+              let tool_fn = Map.get(toolDispatcher, thash, tool.name);
+              switch (tool_fn) {
+                case (null) {
+                  cb(#err({ code = -32601; message = "Tool implementation not found: " # tool.name; data = null }));
+                };
+                case (?fn) {
+                  switch (tool.payment) {
+                    case (null) { fn(params.arguments, auth, cb) };
+                    case (?paymentInfo) {
+                      let paymentResult = await Payments.handlePayment(paymentInfo, config.self, auth, config.allowanceUrl);
+                      switch (paymentResult) {
+                        case (#ok(_)) {
+                          fn(params.arguments, auth, cb);
+                        };
+                        case (#err(handlerError)) {
+                          // Payment failed. Translate the protocol error into a tool error for the agent.
+                          let structured = Json.obj([("error", Json.str(handlerError.message))]);
+                          let toolErrorResult : Types.CallToolResult = {
+                            content = [#text({ text = Json.stringify(structured, null) })];
+                            isError = true;
+                            structuredContent = ?structured;
+                          };
+                          cb(#ok(toolErrorResult));
+                        };
+                      };
+                    };
+                  };
+                };
+              };
             };
           };
         },
@@ -125,26 +180,23 @@ module {
       ),
     );
 
-    // A handler for the `ping` method.
-    // We use `Handler.query0` because `ping` takes no parameters.
+    // 6. `ping` handler
     let pingHandler = (
       "ping",
+      // MODIFIED: Signature updated
       Handler.query0<Types.JsonValue>(
-        // The callback `cb` expects the raw success value, not a Result.
-        // The `query0` helper wraps it in #ok for us.
-        func(cb) {
-          cb(Json.obj([]));
-        },
-        // Use a generic encoder for the raw JSON response.
+        func(auth, cb) { cb(#ok(Json.obj([]))) },
         MCPEncode.jsonValue,
       ),
     );
 
+    // 7. `notifications/initialized` handler
     let notificationsInitializedHandler = (
       "notifications/initialized",
+      // MODIFIED: Signature updated
       Handler.query0<()>(
-        func(cb) { cb(()) }, // No-op, just acknowledges the notification.
-        Encode.nullable, // No return value for notifications.
+        func(auth, cb) { cb(#ok(())) },
+        Encode.nullable,
       ),
     );
 
@@ -159,8 +211,6 @@ module {
       pingHandler,
     ];
 
-    // --- Create and return the low-level JSON RPC server ---
     return Server.Server(allRoutes);
   };
-
 };

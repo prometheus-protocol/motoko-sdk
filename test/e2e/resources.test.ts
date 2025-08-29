@@ -27,7 +27,7 @@ describe('MCP Resources', () => {
     // Arrange: The `resources/list` method takes no parameters.
     const payload = createRpcPayload('resources/list', {}, 1);
 
-    const url = new URL(mcpPath,replicaUrl);
+    const url = new URL(mcpPath, replicaUrl);
     url.searchParams.set('canisterId', canisterId);
 
     // Act
@@ -35,7 +35,7 @@ describe('MCP Resources', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer FAKE_TOKEN',
+        Authorization: 'Bearer FAKE_TOKEN',
       },
       body: JSON.stringify(payload),
     });
@@ -56,7 +56,9 @@ describe('MCP Resources', () => {
     const firstResource = result.resources[0];
     expect(firstResource.uri).toBe('file:///main.py');
     expect(firstResource.name).toBe('main.py');
-    expect(firstResource.description).toBe('Contains the main logic of the application.');
+    expect(firstResource.description).toBe(
+      'Contains the main logic of the application.',
+    );
   });
 
   test('should read the content of a specific resource via resources/read', async () => {
@@ -71,7 +73,7 @@ describe('MCP Resources', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer FAKE_TOKEN',
+        Authorization: 'Bearer FAKE_TOKEN',
       },
       body: JSON.stringify(payload),
     });
@@ -80,11 +82,10 @@ describe('MCP Resources', () => {
     expect(response.status).toBe(200);
     const json = await response.json();
 
-    
     // Assert the JSON-RPC wrapper is correct.
     expect(json.id).toBe(2);
     expect(json.error).toBeUndefined();
-    
+
     // Assert the spec-compliant payload (`result`).
     const result = json.result;
     expect(Array.isArray(result.contents)).toBe(true);

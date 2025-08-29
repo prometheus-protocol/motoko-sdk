@@ -1,7 +1,7 @@
 # MCP Motoko SDK
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](#)
+[![mops](https://oknww-riaaa-aaaam-qaf6a-cai.raw.ic0.app/badge/mops/mcp-motoko-sdk)](https://mops.one/mcp-motoko-sdk)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](#)
 
 A comprehensive, robust, and developer-friendly SDK for building [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) compliant servers on the Internet Computer using Motoko.

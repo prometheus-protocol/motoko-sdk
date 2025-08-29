@@ -36,6 +36,7 @@ shared persistent actor class McpServer() = self {
       title = ?"Main Python Script";
       description = ?"Contains the main logic of the application.";
       mimeType = ?"text/x-python";
+      payment = null;
     },
     {
       uri = "file:///README.md";
@@ -43,6 +44,7 @@ shared persistent actor class McpServer() = self {
       title = ?"Project Documentation";
       description = null;
       mimeType = ?"text/markdown";
+      payment = null;
     },
   ];
 
@@ -50,6 +52,7 @@ shared persistent actor class McpServer() = self {
     name = "get_weather";
     title = ?"Weather Provider";
     description = ?"Get current weather information for a location";
+    payment = null;
     inputSchema = Json.obj([
       ("type", Json.str("object")),
       ("properties", Json.obj([("location", Json.obj([("type", Json.str("string")), ("description", Json.str("City name or zip code"))]))])),
@@ -84,6 +87,8 @@ shared persistent actor class McpServer() = self {
 
   // --- 3. CONFIGURE THE SDK ---
   transient let mcpConfig : McpTypes.McpConfig = {
+    self = Principal.fromActor(self);
+    allowanceUrl = null; // No payment handling in this public example
     serverInfo = {
       name = "MCP-Motoko-Server";
       title = "MCP Motoko Reference Server";

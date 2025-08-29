@@ -29,6 +29,8 @@ module {
     resourceReader : (uri : Text) -> ?Text;
     tools : [Tool];
     toolImplementations : [(Text, ToolFn)];
+    self : Principal; // The canister's own principal
+    allowanceUrl : ?Text; // URL for users to manage their funds/allowance
   };
 
   // --- Client Information ---
@@ -83,6 +85,7 @@ module {
     title : ?Text;
     description : ?Text;
     mimeType : ?Text;
+    payment : ?PaymentInfo;
     // We'll omit size and annotations for now for simplicity, but can add them later.
   };
 
@@ -119,6 +122,7 @@ module {
     description : ?Text;
     inputSchema : JsonValue; // The schema is a JSON object itself.
     outputSchema : ?JsonValue;
+    payment : ?PaymentInfo;
     // We'll omit  annotations for now for simplicity.
   };
 
@@ -150,6 +154,13 @@ module {
   public type Environment = {
     #local; // Local development environment
     #production; // Production environment
+  };
+
+  public type PaymentInfo = {
+    // The ICRC-1 compliant ledger canister principal.
+    ledger : Principal;
+    // The amount in the smallest denomination of the token (e.g., e8s for ICP).
+    amount : Nat;
   };
 
   public type AppContext = {

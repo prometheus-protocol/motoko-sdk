@@ -25,12 +25,20 @@ describe('MCP Authentication and Discovery', () => {
     }
     const keyPath = path.join(__dirname, '.test-private-key.json');
     const privateKeyJwk = JSON.parse(await fs.readFile(keyPath, 'utf-8'));
-    jwtPrivateKey = await jose.importJWK(privateKeyJwk, 'ES256') as jose.CryptoKey;
+    jwtPrivateKey = (await jose.importJWK(
+      privateKeyJwk,
+      'ES256',
+    )) as jose.CryptoKey;
   }, 30000);
 
   test('should return a 401 with a correct WWW-Authenticate header for unauthenticated requests', async () => {
     // ARRANGE
-    const payload = { jsonrpc: '2.0', method: 'tools/call', params: { name: 'get_weather', arguments: { location: 'Tokyo' } }, id: 'www-auth-test' };
+    const payload = {
+      jsonrpc: '2.0',
+      method: 'tools/call',
+      params: { name: 'get_weather', arguments: { location: 'Tokyo' } },
+      id: 'www-auth-test',
+    };
     const rpcUrl = new URL(mcpPath, replicaUrl);
     rpcUrl.searchParams.set('canisterId', canisterId);
 
@@ -38,7 +46,7 @@ describe('MCP Authentication and Discovery', () => {
     // We build the expected URL here to verify it.
     const expectedMetadataUrl = new URL(rpcUrl.toString());
     expectedMetadataUrl.pathname = '/.well-known/oauth-protected-resource';
-    
+
     const expectedHeaderValue = `Bearer resource_metadata="${expectedMetadataUrl.toString()}"`;
 
     // ACT: Make a request without any Authorization header
@@ -57,7 +65,12 @@ describe('MCP Authentication and Discovery', () => {
 
   test('should perform the full auth discovery flow on an unauthenticated request', async () => {
     // ARRANGE: A standard protected tool call payload
-    const payload = { jsonrpc: '2.0', method: 'tools/call', params: { name: 'get_weather', arguments: { location: 'Tokyo' } }, id: 'discovery-test' };
+    const payload = {
+      jsonrpc: '2.0',
+      method: 'tools/call',
+      params: { name: 'get_weather', arguments: { location: 'Tokyo' } },
+      id: 'discovery-test',
+    };
     const rpcUrl = new URL(mcpPath, replicaUrl);
     rpcUrl.searchParams.set('canisterId', canisterId);
 
@@ -77,7 +90,7 @@ describe('MCP Authentication and Discovery', () => {
     const match = wwwAuthHeader!.match(/resource_metadata="([^"]+)"/);
     expect(match).not.toBeNull();
     const metadataUrlString = match![1]; // This is the full URL for the metadata
-    
+
     // STEP 3: Call the metadata URL to discover the auth server
     const metadataUrl = new URL(metadataUrlString);
 
@@ -91,7 +104,7 @@ describe('MCP Authentication and Discovery', () => {
     expect(discoveredAuthServerUrl).toBe(mockAuthServerUrl);
 
     // STEP 5: Get a "fake" token from the discovered Authorization Server
-    const token = await new jose.SignJWT({ scope: 'read:weather' })
+    const token = await new jose.SignJWT({ scope: 'openid' })
       .setProtectedHeader({ alg: 'ES256', kid: 'test-key-2025' })
       .setIssuer(discoveredAuthServerUrl) // Use the DISCOVERED URL
       .setAudience(resourceServerUrl.toString()) // Audience is the resource server itself
@@ -104,7 +117,7 @@ describe('MCP Authentication and Discovery', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(payload),
     });
@@ -118,7 +131,7 @@ describe('MCP Authentication and Discovery', () => {
 
   test('should succeed when a valid token is provided directly', async () => {
     // Arrange
-    const token = await new jose.SignJWT({ scope: 'read:weather' })
+    const token = await new jose.SignJWT({ scope: 'openid' })
       .setProtectedHeader({ alg: 'ES256', kid: 'test-key-2025' })
       .setIssuer(mockAuthServerUrl)
       .setAudience(resourceServerUrl.toString()) // Audience is the resource server itself
@@ -126,7 +139,12 @@ describe('MCP Authentication and Discovery', () => {
       .setExpirationTime('2h')
       .sign(jwtPrivateKey);
 
-    const payload = { jsonrpc: '2.0', method: 'tools/call', params: { name: 'get_weather', arguments: { location: 'Tokyo' } }, id: 1 };
+    const payload = {
+      jsonrpc: '2.0',
+      method: 'tools/call',
+      params: { name: 'get_weather', arguments: { location: 'Tokyo' } },
+      id: 1,
+    };
     const url = new URL(mcpPath, replicaUrl);
     url.searchParams.set('canisterId', canisterId);
 
@@ -135,7 +153,7 @@ describe('MCP Authentication and Discovery', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(payload),
     });
@@ -147,7 +165,7 @@ describe('MCP Authentication and Discovery', () => {
     expect(json.result.content[0].text).toContain('Tokyo');
   });
 
-   test('should return certified metadata even when the URL has query parameters', async () => {
+  test('should return certified metadata even when the URL has query parameters', async () => {
     // ARRANGE: Construct the metadata URL directly, simulating a local development environment
     // where the canister ID is passed as a query parameter. We add an extra dummy
     // parameter to ensure the Motoko fix is robust and handles more than just `canisterId`.

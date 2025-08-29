@@ -20,7 +20,7 @@
       "dependencies": ["icrc1_ledger"],
       "type": "motoko",
       "main": "test/picjs/paid_mcp_server/main.mo",
-      "args": "(record { paymentLedger = principal \"ryjl3-tyaaa-aaaaa-aaaba-cai\" })"
+      "init_arg": "(record { paymentLedger = principal \"ryjl3-tyaaa-aaaaa-aaaba-cai\" })"
     },
     "icrc1_ledger": {
       "type": "custom",

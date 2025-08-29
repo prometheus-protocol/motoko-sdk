@@ -51,9 +51,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - uses: ZenVoich/setup-mops@v1
       - name: Install dependencies
         run: npm ci # 'ci' is faster and safer for CI environments
+      - uses: ZenVoich/setup-mops@v1
+      - name: Install Motoko dependencies
+        run: mops install
       - name: Install DFX
         uses: dfinity/setup-dfx@main
       - name: Start dfx

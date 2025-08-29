@@ -58,8 +58,8 @@ jobs:
         uses: dfinity/setup-dfx@main
       - name: Start dfx
         run: dfx start --background --clean
-      - name: Generate Declarations
-        run: dfx generate test_paid_mcp_server && dfx generate icrc1_ledger
+      - name: Deploy Canisters
+        run: dfx deploy test_paid_mcp_server
       - name: Run canister tests
         run: npm run test:canisters # Using a dedicated script for clarity
 

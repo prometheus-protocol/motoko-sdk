@@ -17,6 +17,7 @@
       "main": "test/e2e/private_mcp_server/main.mo"
     },
     "test_paid_mcp_server": {
+      "dependencies": ["icrc1_ledger"],
       "type": "motoko",
       "main": "test/picjs/paid_mcp_server/main.mo"
     },

@@ -51,6 +51,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - uses: ZenVoich/setup-mops@v1
       - name: Install dependencies
         run: npm ci # 'ci' is faster and safer for CI environments
       - name: Install DFX
@@ -59,7 +60,6 @@ jobs:
         run: dfx start --background --clean
       - name: Generate Declarations
         run: dfx generate test_paid_mcp_server && dfx generate icrc1_ledger
-      - uses: ZenVoich/setup-mops@v1
       - name: Run canister tests
         run: npm run test:canisters # Using a dedicated script for clarity
 

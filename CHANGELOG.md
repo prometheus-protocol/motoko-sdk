@@ -1,3 +1,16 @@
+# [1.3.0](https://github.com/prometheus-protocol/motoko-sdk/compare/v1.2.0...v1.3.0) (2025-08-30)
+
+
+### Bug Fixes
+
+* remove payment info from resources ([0b73c85](https://github.com/prometheus-protocol/motoko-sdk/commit/0b73c8587498edf3917e23902fb41900af2434ff))
+* remove payment info from resources ([e68ad62](https://github.com/prometheus-protocol/motoko-sdk/commit/e68ad62aa5498e73154ab1f9f4338441508099d9))
+
+
+### Features
+
+* gate access to tools using payment configs ([beb7cf6](https://github.com/prometheus-protocol/motoko-sdk/commit/beb7cf6f0d40fd8642b13d97ad6f2915085b9f8d))
+
 # [1.2.0](https://github.com/prometheus-protocol/motoko-sdk/compare/v1.1.2...v1.2.0) (2025-08-22)
 
 

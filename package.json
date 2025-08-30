@@ -8,9 +8,10 @@
   },
   "scripts": {
     "prepare": "husky",
-    "test": "npm run test:e2e && npm run test:motoko",
-    "test:e2e": "vitest",
-    "test:motoko": "mops test"
+    "test": "npm run test:motoko && npm run test:canisters && npm run test:e2e",
+    "test:motoko": "mops test",
+    "test:canisters": "vitest --project picjs-tests",
+    "test:e2e": "vitest --project e2e-tests"
   },
   "repository": {
     "type": "git",
@@ -26,23 +27,23 @@
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
-    "@dfinity/agent": "^3.1.0",
-    "@dfinity/identity": "^3.1.0",
+    "@dfinity/agent": "^2.4.1",
+    "@dfinity/identity": "^2.4.1",
+    "@dfinity/pic": "^0.13.1",
+    "@modelcontextprotocol/sdk": "^1.17.0",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/exec": "^7.1.0",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/github": "^11.0.3",
     "@types/express": "^5.0.3",
-    "@types/node": "^24.1.0",
+    "@types/node": "^24.3.0",
     "cross-fetch": "^4.1.0",
     "dotenv": "^17.2.1",
+    "express": "^5.1.0",
     "husky": "^9.1.7",
+    "jose": "^6.0.12",
+    "prettier": "^3.6.2",
     "semantic-release": "^24.2.7",
     "vitest": "^3.2.4"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.17.0",
-    "express": "^5.1.0",
-    "jose": "^6.0.12"
   }
 }

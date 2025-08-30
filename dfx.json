@@ -15,6 +15,23 @@
     "test_private_mcp_server": {
       "type": "motoko",
       "main": "test/e2e/private_mcp_server/main.mo"
+    },
+    "test_paid_mcp_server": {
+      "dependencies": ["icrc1_ledger"],
+      "type": "motoko",
+      "main": "test/picjs/paid_mcp_server/main.mo",
+      "init_arg": "(record { paymentLedger = principal \"ryjl3-tyaaa-aaaaa-aaaba-cai\" })"
+    },
+    "icrc1_ledger": {
+      "type": "custom",
+      "candid": "https://github.com/dfinity/ic/releases/download/ledger-suite-icrc-2025-06-19/ledger.did",
+      "wasm": "https://github.com/dfinity/ic/releases/download/ledger-suite-icrc-2025-06-19/ic-icrc1-ledger.wasm.gz",
+      "init_arg": "(variant { Init = record { token_symbol = \"PMP\"; token_name = \"Prometheus Protocol Token\"; minting_account = record { owner = principal \"amcyq-57mpp-32zru-iuv42-nthar-zphnv-s7shv-fmpn6-c3aep-dqsaw-7ae\" }; transfer_fee = 1_000; initial_balances = vec { record { record { owner = principal \"feh5k-2fozc-ujrsf-otek5-pcla7-rmdtc-gwhmo-r2kct-iwtqr-xxzei-cae\"; }; 100_000_000_000 } }; archive_options = record { num_blocks_to_archive = 1000; trigger_threshold = 2000; controller_id = principal \"amcyq-57mpp-32zru-iuv42-nthar-zphnv-s7shv-fmpn6-c3aep-dqsaw-7ae\" }; metadata = vec {}; feature_flags = opt record { icrc2 = true }; } })",
+      "remote": {
+        "id": {
+          "ic": "dy3i7-mqaaa-aaaai-q32ja-cai"
+        }
+      }
     }
   },
   "defaults": {

@@ -85,6 +85,7 @@ shared persistent actor class McpServer() = self {
     name = "get_weather";
     title = ?"Weather Provider";
     description = ?"Get current weather information for a location";
+    payment = null;
     inputSchema = Json.obj([
       ("type", Json.str("object")),
       ("properties", Json.obj([("location", Json.obj([("type", Json.str("string")), ("description", Json.str("City name or zip code"))]))])),
@@ -119,6 +120,8 @@ shared persistent actor class McpServer() = self {
 
   // --- 3. CONFIGURE THE SDK ---
   transient let mcpConfig : McpTypes.McpConfig = {
+    self = Principal.fromActor(self);
+    allowanceUrl = null; // No payment handling in this public example
     serverInfo = {
       name = "full-onchain-mcp-server";
       title = "Full On-chain MCP Server";

@@ -3,3 +3,5 @@ node_modules
 .dfx
 # Prometheus Protocol Secrets - DO NOT COMMIT
 .env
+.vscode
+src/declarations

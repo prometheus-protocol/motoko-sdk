@@ -66,19 +66,28 @@ module {
     // 2. Parse the token structure.
     let parsedToken = switch (Jwt.parse(tokenString)) {
       case (#ok(t)) { t };
-      case (#err(_)) { return #err(_unauthorized(metadataUrl)) };
+      case (#err(_)) {
+        Debug.print("Failed to parse JWT.");
+        return #err(_unauthorized(metadataUrl));
+      };
     };
 
     // 3. Get the Key ID (kid) from the token header.
     let kid = switch (Jwt.getHeaderValue(parsedToken, "kid")) {
       case (?#string(k)) { k };
-      case _ { return #err(_unauthorized(metadataUrl)) };
+      case _ {
+        Debug.print("JWT is missing 'kid' header.");
+        return #err(_unauthorized(metadataUrl));
+      };
     };
 
     // 4. Fetch the public key data.
     let pkData = switch (await JwksClient.getPublicKey(ctx, kid)) {
       case (?data) { data };
-      case (null) { return #err(_unauthorized(metadataUrl)) };
+      case (null) {
+        Debug.print("Failed to fetch public key.");
+        return #err(_unauthorized(metadataUrl));
+      };
     };
     let curve = ECDSA.Curve(pkData.curveKind);
     let publicKeyObject = ECDSA.PublicKey(pkData.x, pkData.y, curve);
@@ -94,7 +103,10 @@ module {
     };
 
     switch (Jwt.validate(parsedToken, validationOptions)) {
-      case (#err(e)) { return #err(_unauthorized(metadataUrl)) };
+      case (#err(e)) {
+        Debug.print("JWT validation error: " # e);
+        return #err(_unauthorized(metadataUrl));
+      };
       case (#ok()) {};
     };
 

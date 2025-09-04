@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/prometheus-protocol/motoko-sdk/compare/v1.3.0...v1.4.0) (2025-09-04)
+
+
+### Features
+
+* server statistics with the beacon sdk ([65453b0](https://github.com/prometheus-protocol/motoko-sdk/commit/65453b05e1a2e6952ba162cbe8e6ba7dfbda86c3))
+
 # [1.3.0](https://github.com/prometheus-protocol/motoko-sdk/compare/v1.2.0...v1.3.0) (2025-08-30)
 
 

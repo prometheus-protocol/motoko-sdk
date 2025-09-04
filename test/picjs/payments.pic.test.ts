@@ -133,9 +133,11 @@ describe('MCP Server Monetization', () => {
       wasm: MCP_SERVER_WASM_PATH,
       sender: serverOwnerIdentity.getPrincipal(),
       arg: IDL.encode(mcpServerInit({ IDL }), [
-        {
-          paymentLedger: ledgerFixture.canisterId,
-        },
+        [
+          {
+            paymentLedger: ledgerFixture.canisterId,
+          },
+        ],
       ]),
     });
     serverCanisterId = serverFixture.canisterId;

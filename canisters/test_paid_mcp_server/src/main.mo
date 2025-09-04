@@ -24,11 +24,18 @@ import IC "mo:ic"; // Import the IC module for HTTP requests
 import AuthState "../../../src/auth/State";
 import HttpAssets "../../../src/mcp/HttpAssets";
 
-shared ({ caller = deployer }) persistent actor class McpServer({
-  paymentLedger : Principal;
-}) = self {
+shared ({ caller = deployer }) persistent actor class McpServer(
+  args : ?{
+    paymentLedger : Principal;
+  }
+) = self {
 
   var owner : Principal = deployer;
+
+  let paymentLedger : Principal = switch (args) {
+    case (?a) { a.paymentLedger };
+    case (null) { Principal.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai") }; // Default to ICP ledger
+  };
 
   // Ownership
   /// Returns the principal of the current owner of this canister.

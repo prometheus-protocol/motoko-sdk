@@ -10,41 +10,20 @@ import HttpTypes "mo:http-types";
 // The only SDK import the user needs!
 import Mcp "../../../src/mcp/Mcp";
 import McpTypes "../../../src/mcp/Types";
-import AuthTypes "../../../src/auth/Types";
 import AuthCleanup "../../../src/auth/Cleanup";
+import AuthTypes "../../../src/auth/Types";
 import HttpHandler "../../../src/mcp/HttpHandler";
 import SrvTypes "../../../src/server/Types";
 import Cleanup "../../../src/mcp/Cleanup";
 import State "../../../src/mcp/State";
-import Payments "../../../src/mcp/Payments";
 
-import IC "mo:ic"; // Import the IC module for HTTP requests
+import IC "mo:ic";
 
 // Auth
 import AuthState "../../../src/auth/State";
 import HttpAssets "../../../src/mcp/HttpAssets";
 
-shared ({ caller = deployer }) persistent actor class McpServer({
-  paymentLedger : Principal;
-}) = self {
-
-  var owner : Principal = deployer;
-
-  // Ownership
-  /// Returns the principal of the current owner of this canister.
-  public query func get_owner() : async Principal {
-    return owner;
-  };
-
-  /// Transfers ownership of the canister to a new principal.
-  /// Only the current owner can call this function.
-  public shared ({ caller }) func set_owner(new_owner : Principal) : async Result.Result<(), Payments.TreasuryError> {
-    if (caller != owner) {
-      return #err(#NotOwner);
-    };
-    owner := new_owner;
-    return #ok(());
-  };
+shared persistent actor class McpServer() = self {
 
   // State for certified HTTP assets (like /.well-known/...)
   var stable_http_assets : HttpAssets.StableEntries = [];
@@ -59,7 +38,7 @@ shared ({ caller = deployer }) persistent actor class McpServer({
   // The application context that holds our state.
   var appContext : McpTypes.AppContext = State.init(resourceContents);
 
-  let issuerUrl = "https://mock-auth-server.com";
+  let issuerUrl = "https://bfggx-7yaaa-aaaai-q32gq-cai.icp0.io";
   let requiredScopes = ["openid"];
 
   //function to transform the response for jwks client
@@ -103,59 +82,49 @@ shared ({ caller = deployer }) persistent actor class McpServer({
   ];
 
   var tools : [McpTypes.Tool] = [{
-    name = "generate_image";
-    title = ?"Image Generator";
-    description = ?"Generate an image from a text prompt";
-    payment = ?{
-      amount = 1_000_000; // Corrected amount to match test
-      ledger = paymentLedger;
-    };
-    // MODIFIED: The input schema now expects a 'prompt'.
+    name = "get_weather";
+    title = ?"Weather Provider";
+    description = ?"Get current weather information for a location";
+    payment = null;
     inputSchema = Json.obj([
       ("type", Json.str("object")),
-      ("properties", Json.obj([("prompt", Json.obj([("type", Json.str("string")), ("description", Json.str("A text description of the image to generate."))]))])),
-      ("required", Json.arr([Json.str("prompt")])),
+      ("properties", Json.obj([("location", Json.obj([("type", Json.str("string")), ("description", Json.str("City name or zip code"))]))])),
+      ("required", Json.arr([Json.str("location")])),
     ]);
-    // MODIFIED: The output schema now returns an 'imageUrl'.
     outputSchema = ?Json.obj([
       ("type", Json.str("object")),
-      ("properties", Json.obj([("imageUrl", Json.obj([("type", Json.str("string")), ("description", Json.str("The URL of the generated image."))]))])),
-      ("required", Json.arr([Json.str("imageUrl")])),
+      ("properties", Json.obj([("report", Json.obj([("type", Json.str("string")), ("description", Json.str("The textual weather report."))]))])),
+      ("required", Json.arr([Json.str("report")])),
     ]);
   }];
 
   // --- 2. DEFINE YOUR TOOL LOGIC ---
-  // This is the function that executes when the tool is called.
-
-  func generateImageTool(args : McpTypes.JsonValue, auth : ?AuthTypes.AuthInfo, cb : (Result.Result<McpTypes.CallToolResult, McpTypes.HandlerError>) -> ()) {
-    // MODIFIED: Get the 'prompt' argument instead of 'location'.
-    let prompt = switch (Result.toOption(Json.getAsText(args, "prompt"))) {
-      case (?p) { p };
+  func getWeatherTool(args : McpTypes.JsonValue, auth : ?AuthTypes.AuthInfo, cb : (Result.Result<McpTypes.CallToolResult, McpTypes.HandlerError>) -> ()) {
+    let location = switch (Result.toOption(Json.getAsText(args, "location"))) {
+      case (?loc) { loc };
       case (null) {
-        // Return a tool-level error if the required argument is missing.
-        return cb(#ok({ content = [#text({ text = "Missing required 'prompt' argument." })]; isError = true; structuredContent = null }));
+        return cb(#ok({ content = [#text({ text = "Missing 'location' arg." })]; isError = true; structuredContent = null }));
       };
     };
 
-    // MODIFIED: Simulate generating an image URL based on the prompt.
-    // In a real application, this would call an image generation service.
-    let sanitizedPrompt = Text.replace(prompt, #text " ", "-");
-    let imageUrl = "https://images.example.com/" # sanitizedPrompt # ".png";
+    // The human-readable report.
+    let report = "The weather in " # location # " is sunny.";
 
-    // MODIFIED: Build the structured JSON payload that matches our new outputSchema.
-    let structuredPayload = Json.obj([("imageUrl", Json.str(imageUrl))]);
+    // Build the structured JSON payload that matches our outputSchema.
+    let structuredPayload = Json.obj([("report", Json.str(report))]);
+    let stringified = Json.stringify(structuredPayload, null);
 
     // Return the full, compliant result.
-    cb(#ok({ content = [#text({ text = "Image generated successfully: " # imageUrl })]; isError = false; structuredContent = ?structuredPayload }));
+    cb(#ok({ content = [#text({ text = stringified })]; isError = false; structuredContent = ?structuredPayload }));
   };
 
   // --- 3. CONFIGURE THE SDK ---
   transient let mcpConfig : McpTypes.McpConfig = {
     self = Principal.fromActor(self);
-    allowanceUrl = ?"https://canister_id.icp0.io/allowances"; // Example allowance URL for payment handling
+    allowanceUrl = null; // No payment handling in this public example
     serverInfo = {
-      name = "MCP-Motoko-Server";
-      title = "MCP Motoko Reference Server";
+      name = "full-onchain-mcp-server";
+      title = "Full On-chain MCP Server";
       version = "0.1.0";
     };
     resources = resources;
@@ -164,33 +133,15 @@ shared ({ caller = deployer }) persistent actor class McpServer({
     };
     tools = tools;
     toolImplementations = [
-      ("generate_image", generateImageTool),
+      ("get_weather", getWeatherTool),
     ];
+    beacon = null; // No beacon in this example
   };
 
   // --- 4. CREATE THE SERVER LOGIC ---
   transient let mcpServer = Mcp.createServer(mcpConfig);
 
   // --- PUBLIC ENTRY POINTS ---
-
-  // Treasury
-  public shared func get_treasury_balance(ledger_id : Principal) : async Nat {
-    return await Payments.get_treasury_balance(Principal.fromActor(self), ledger_id);
-  };
-
-  public shared ({ caller }) func withdraw(
-    ledger_id : Principal,
-    amount : Nat,
-    destination : Payments.Destination,
-  ) : async Result.Result<Nat, Payments.TreasuryError> {
-    return await Payments.withdraw(
-      caller,
-      owner,
-      ledger_id,
-      amount,
-      destination,
-    );
-  };
 
   // Helper to avoid repeating context creation.
   private func _create_http_context() : HttpHandler.Context {
@@ -201,7 +152,7 @@ shared ({ caller = deployer }) persistent actor class McpServer({
       streaming_callback = http_request_streaming_callback;
       auth = ?authContext;
       http_asset_cache = ?http_assets.cache;
-      mcp_path = ?"/mcp";
+      mcp_path = ?"/mcp"; // All MCP requests must start with /mcp
     };
   };
 

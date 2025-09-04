@@ -145,6 +145,47 @@ await myCanister.withdraw(
 );
 ```
 
+## Proof-of-Use and Usage Mining (Beacon SDK)
+
+The SDK includes a built-in "beacon" system to participate in the Prometheus Protocol's "Proof-of-Use" usage mining program. This allows your server to automatically and securely report tool usage statistics, making it eligible for `preMCPT` rewards.
+
+The system consists of two parts:
+
+1.  **The `UsageTracker` Canister**: A central, on-chain canister that securely aggregates usage data from all participating MCP servers. Its security model is based on an allowlist of audited Wasm hashes, ensuring that only compliant servers can submit data. The reference implementation can be found in the `canisters/usage_tracker` directory of this repository.
+2.  **The Beacon SDK**: The logic integrated into this SDK. It acts as the "beacon" that periodically sends batched usage reports to the `UsageTracker`.
+
+### Enabling the Beacon
+
+Enabling the beacon is done via a single configuration object in your `McpConfig`. You must declare a stable `BeaconContext` variable in your actor and pass it to the configuration.
+
+```motoko
+import Beacon "mo:mcp_sdk/beacon";
+import McpTypes "mo:mcp_sdk/Types";
+import Principal "mo:base/Principal";
+
+persistent actor class MyMcpServer {
+    // 1. Declare the beacon's state as a stable variable.
+    var beaconContext = Beacon.init();
+    Beacon.startTimer<system>(beaconContext);
+
+    // 2. Configure the beacon in your McpConfig.
+    let mcpConfig : McpTypes.McpConfig = {
+        // ... other config (serverInfo, tools, etc.)
+        beacon = ?beaconContext;
+    };
+
+    // 3. The SDK handles the rest.
+    let mcp_server = Mcp.createServer(mcpConfig);
+    // ...
+}
+```
+
+### How it Works
+
+Once enabled, the SDK will **automatically** track every successful, **authenticated** tool call. This is a deliberate security measure to prevent Sybil attacks (spamming public endpoints) and ensure that rewards are distributed based on legitimate user interactions.
+
+You do not need to add any extra `track_call` functions to your tool implementations; the SDK handles it for you.
+
 ## Connection Management
 
 The SDK uses a low-cost `Timer` to automatically clean up stale client connections, preventing memory leaks and keeping hosting costs low. You simply need to start the timer when your canister initializes.

@@ -45,5 +45,8 @@
     "prettier": "^3.6.2",
     "semantic-release": "^24.2.7",
     "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@noble/hashes": "^2.0.0"
   }
 }

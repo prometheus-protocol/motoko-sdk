@@ -36,7 +36,6 @@ shared persistent actor class McpServer() = self {
       title = ?"Main Python Script";
       description = ?"Contains the main logic of the application.";
       mimeType = ?"text/x-python";
-      payment = null;
     },
     {
       uri = "file:///README.md";
@@ -44,7 +43,6 @@ shared persistent actor class McpServer() = self {
       title = ?"Project Documentation";
       description = null;
       mimeType = ?"text/markdown";
-      payment = null;
     },
   ];
 
@@ -102,6 +100,7 @@ shared persistent actor class McpServer() = self {
     toolImplementations = [
       ("get_weather", getWeatherTool),
     ];
+    beacon = null; // No beacon in this example
   };
 
   // --- 4. CREATE THE SERVER LOGIC ---
@@ -118,7 +117,7 @@ shared persistent actor class McpServer() = self {
       streaming_callback = http_request_streaming_callback;
       auth = null;
       http_asset_cache = null;
-      mcp_path = ?"/mcp"; // All MCP requests must start with /mcp
+      mcp_path = ?"/mcp";
     };
   };
 

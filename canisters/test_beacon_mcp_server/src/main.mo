@@ -10,35 +10,45 @@ import HttpTypes "mo:http-types";
 // The only SDK import the user needs!
 import Mcp "../../../src/mcp/Mcp";
 import McpTypes "../../../src/mcp/Types";
-import AuthCleanup "../../../src/auth/Cleanup";
 import AuthTypes "../../../src/auth/Types";
+import AuthCleanup "../../../src/auth/Cleanup";
 import HttpHandler "../../../src/mcp/HttpHandler";
 import SrvTypes "../../../src/server/Types";
 import Cleanup "../../../src/mcp/Cleanup";
 import State "../../../src/mcp/State";
+import Payments "../../../src/mcp/Payments";
+import Beacon "../../../src/mcp/Beacon";
 
-import IC "mo:ic";
+import IC "mo:ic"; // Import the IC module for HTTP requests
 
 // Auth
 import AuthState "../../../src/auth/State";
 import HttpAssets "../../../src/mcp/HttpAssets";
 
-shared persistent actor class McpServer() = self {
+shared ({ caller = deployer }) persistent actor class McpServer(
+  args : ?{
+    beaconCanisterId : Principal;
+    beaconIntervalSec : Nat;
+  }
+) = self {
+
+  let beaconCanisterId : Principal = switch (args) {
+    case (?a) { a.beaconCanisterId };
+    case (null) { Principal.fromText("aaaaa-aa") }; // Default to the public beacon canister
+  };
+  let beaconIntervalSec : ?Nat = switch (args) {
+    case (?a) { ?a.beaconIntervalSec };
+    case (null) { null };
+  };
 
   // State for certified HTTP assets (like /.well-known/...)
   var stable_http_assets : HttpAssets.StableEntries = [];
   transient let http_assets = HttpAssets.init(stable_http_assets);
 
-  // --- STATE (Lives in the main actor) ---
-  var resourceContents = [
-    ("file:///main.py", "print('Hello from main.py!')"),
-    ("file:///README.md", "# MCP Motoko Server"),
-  ];
-
   // The application context that holds our state.
-  var appContext : McpTypes.AppContext = State.init(resourceContents);
+  var appContext : McpTypes.AppContext = State.init([]);
 
-  let issuerUrl = "https://bfggx-7yaaa-aaaai-q32gq-cai.icp0.io";
+  let issuerUrl = "https://mock-auth-server.com";
   let requiredScopes = ["openid"];
 
   //function to transform the response for jwks client
@@ -59,88 +69,88 @@ shared persistent actor class McpServer() = self {
     transformJwksResponse,
   );
 
-  // --- Cleanup Timers ---
+  // Initialize the beacon context
+  let beaconContext : Beacon.BeaconContext = Beacon.init(
+    beaconCanisterId, // Public beacon canister ID
+    beaconIntervalSec, // Send a beacon every 10 seconds
+  );
+
+  // --- Timers ---
   Cleanup.startCleanupTimer<system>(appContext);
   AuthCleanup.startCleanupTimer<system>(authContext);
+  Beacon.startTimer<system>(beaconContext);
 
-  // --- 1. DEFINE YOUR RESOURCES & TOOLS ---
-  var resources : [McpTypes.Resource] = [
+  // --- 3. DEFINE YOUR TOOLS ---
+  var tools : [McpTypes.Tool] = [
     {
-      uri = "file:///main.py";
-      name = "main.py";
-      title = ?"Main Python Script";
-      description = ?"Contains the main logic of the application.";
-      mimeType = ?"text/x-python";
+      name = "get_balance";
+      title = null;
+      description = null;
+      payment = null;
+      inputSchema = Json.obj([]);
+      outputSchema = null;
     },
     {
-      uri = "file:///README.md";
-      name = "README.md";
-      title = ?"Project Documentation";
+      name = "get_transactions";
+      title = null;
       description = null;
-      mimeType = ?"text/markdown";
+      payment = null;
+      inputSchema = Json.obj([]);
+      outputSchema = null;
     },
   ];
 
-  var tools : [McpTypes.Tool] = [{
-    name = "get_weather";
-    title = ?"Weather Provider";
-    description = ?"Get current weather information for a location";
-    payment = null;
-    inputSchema = Json.obj([
-      ("type", Json.str("object")),
-      ("properties", Json.obj([("location", Json.obj([("type", Json.str("string")), ("description", Json.str("City name or zip code"))]))])),
-      ("required", Json.arr([Json.str("location")])),
-    ]);
-    outputSchema = ?Json.obj([
-      ("type", Json.str("object")),
-      ("properties", Json.obj([("report", Json.obj([("type", Json.str("string")), ("description", Json.str("The textual weather report."))]))])),
-      ("required", Json.arr([Json.str("report")])),
-    ]);
-  }];
-
-  // --- 2. DEFINE YOUR TOOL LOGIC ---
-  func getWeatherTool(args : McpTypes.JsonValue, auth : ?AuthTypes.AuthInfo, cb : (Result.Result<McpTypes.CallToolResult, McpTypes.HandlerError>) -> ()) {
-    let location = switch (Result.toOption(Json.getAsText(args, "location"))) {
-      case (?loc) { loc };
-      case (null) {
-        return cb(#ok({ content = [#text({ text = "Missing 'location' arg." })]; isError = true; structuredContent = null }));
-      };
-    };
-
-    // The human-readable report.
-    let report = "The weather in " # location # " is sunny.";
-
-    // Build the structured JSON payload that matches our outputSchema.
-    let structuredPayload = Json.obj([("report", Json.str(report))]);
-    let stringified = Json.stringify(structuredPayload, null);
-
-    // Return the full, compliant result.
-    cb(#ok({ content = [#text({ text = stringified })]; isError = false; structuredContent = ?structuredPayload }));
+  // --- 4. DEFINE YOUR TOOL LOGIC ---
+  func getBalanceTool(args : McpTypes.JsonValue, auth : ?AuthTypes.AuthInfo, cb : (Result.Result<McpTypes.CallToolResult, McpTypes.HandlerError>) -> ()) {
+    cb(#ok({ content = [#text({ text = "{\"balance\": 100}" })]; isError = false; structuredContent = null }));
   };
 
-  // --- 3. CONFIGURE THE SDK ---
+  func getTransactionsTool(args : McpTypes.JsonValue, auth : ?AuthTypes.AuthInfo, cb : (Result.Result<McpTypes.CallToolResult, McpTypes.HandlerError>) -> ()) {
+    cb(#ok({ content = [#text({ text = "{\"transactions\": []}" })]; isError = false; structuredContent = null }));
+  };
+
+  // --- 5. CONFIGURE THE SDK ---
   transient let mcpConfig : McpTypes.McpConfig = {
     self = Principal.fromActor(self);
-    allowanceUrl = null; // No payment handling in this public example
+    allowanceUrl = null;
     serverInfo = {
-      name = "full-onchain-mcp-server";
-      title = "Full On-chain MCP Server";
+      name = "Beacon-Test-Server";
+      title = "MCP Beacon Test Server";
       version = "0.1.0";
     };
-    resources = resources;
-    resourceReader = func(uri) {
-      Map.get(appContext.resourceContents, thash, uri);
-    };
+    resources = [];
+    resourceReader = func(_) { null };
     tools = tools;
     toolImplementations = [
-      ("get_weather", getWeatherTool),
+      ("get_balance", getBalanceTool),
+      ("get_transactions", getTransactionsTool),
     ];
+    beacon = ?beaconContext; // Enable beacon tracking
   };
 
   // --- 4. CREATE THE SERVER LOGIC ---
   transient let mcpServer = Mcp.createServer(mcpConfig);
 
   // --- PUBLIC ENTRY POINTS ---
+
+  // Treasury
+  public shared func get_treasury_balance(ledger_id : Principal) : async Nat {
+    return await Payments.get_treasury_balance(Principal.fromActor(self), ledger_id);
+  };
+
+  public shared ({ caller }) func withdraw(
+    ledger_id : Principal,
+    amount : Nat,
+    destination : Payments.Destination,
+  ) : async Result.Result<Nat, Payments.TreasuryError> {
+    return await Payments.withdraw(
+      caller,
+      deployer,
+      ledger_id,
+      amount,
+      destination,
+    );
+  };
 
   // Helper to avoid repeating context creation.
   private func _create_http_context() : HttpHandler.Context {
@@ -151,7 +161,7 @@ shared persistent actor class McpServer() = self {
       streaming_callback = http_request_streaming_callback;
       auth = ?authContext;
       http_asset_cache = ?http_assets.cache;
-      mcp_path = ?"/mcp"; // All MCP requests must start with /mcp
+      mcp_path = ?"/mcp";
     };
   };
 

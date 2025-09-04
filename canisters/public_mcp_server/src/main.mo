@@ -1,9 +1,9 @@
 import Map "mo:map/Map";
 import { thash } "mo:map/Map";
 import Result "mo:base/Result";
-import Blob "mo:base/Blob";
 import Principal "mo:base/Principal";
 import Text "mo:base/Text";
+import Blob "mo:base/Blob";
 import Json "mo:json";
 import HttpTypes "mo:http-types";
 
@@ -11,57 +11,22 @@ import HttpTypes "mo:http-types";
 import Mcp "../../../src/mcp/Mcp";
 import McpTypes "../../../src/mcp/Types";
 import AuthTypes "../../../src/auth/Types";
-import AuthCleanup "../../../src/auth/Cleanup";
 import HttpHandler "../../../src/mcp/HttpHandler";
 import SrvTypes "../../../src/server/Types";
 import Cleanup "../../../src/mcp/Cleanup";
 import State "../../../src/mcp/State";
 
-import IC "mo:ic"; // Import the IC module for HTTP requests
-
-// Auth
-import AuthState "../../../src/auth/State";
-import HttpAssets "../../../src/mcp/HttpAssets";
-
 shared persistent actor class McpServer() = self {
-
-  // State for certified HTTP assets (like /.well-known/...)
-  var stable_http_assets : HttpAssets.StableEntries = [];
-  transient let http_assets = HttpAssets.init(stable_http_assets);
-
   // --- STATE (Lives in the main actor) ---
   var resourceContents = [
     ("file:///main.py", "print('Hello from main.py!')"),
     ("file:///README.md", "# MCP Motoko Server"),
   ];
 
-  // The application context that holds our state.
   var appContext : McpTypes.AppContext = State.init(resourceContents);
 
-  let issuerUrl = "http://localhost:3001";
-  let requiredScopes = ["openid"];
-
-  //function to transform the response for jwks client
-  public query func transformJwksResponse({
-    context : Blob;
-    response : IC.HttpRequestResult;
-  }) : async IC.HttpRequestResult {
-    {
-      response with headers = []; // not intersted in the headers
-    };
-  };
-
-  // Initialize the auth context with the issuer URL and required scopes.
-  let authContext : AuthTypes.AuthContext = AuthState.init(
-    Principal.fromActor(self),
-    issuerUrl,
-    requiredScopes,
-    transformJwksResponse,
-  );
-
-  // --- Cleanup Timers ---
+  // --- Cleanup Timer For Deleting Old Streams ---
   Cleanup.startCleanupTimer<system>(appContext);
-  AuthCleanup.startCleanupTimer<system>(authContext);
 
   // --- 1. DEFINE YOUR RESOURCES & TOOLS ---
   var resources : [McpTypes.Resource] = [
@@ -71,6 +36,7 @@ shared persistent actor class McpServer() = self {
       title = ?"Main Python Script";
       description = ?"Contains the main logic of the application.";
       mimeType = ?"text/x-python";
+      payment = null;
     },
     {
       uri = "file:///README.md";
@@ -78,6 +44,7 @@ shared persistent actor class McpServer() = self {
       title = ?"Project Documentation";
       description = null;
       mimeType = ?"text/markdown";
+      payment = null;
     },
   ];
 
@@ -135,6 +102,7 @@ shared persistent actor class McpServer() = self {
     toolImplementations = [
       ("get_weather", getWeatherTool),
     ];
+    beacon = null; // No beacon in this example
   };
 
   // --- 4. CREATE THE SERVER LOGIC ---
@@ -149,9 +117,9 @@ shared persistent actor class McpServer() = self {
       active_streams = appContext.activeStreams;
       mcp_server = mcpServer;
       streaming_callback = http_request_streaming_callback;
-      auth = ?authContext;
-      http_asset_cache = ?http_assets.cache;
-      mcp_path = ?"/mcp";
+      auth = null;
+      http_asset_cache = null;
+      mcp_path = ?"/mcp"; // All MCP requests must start with /mcp
     };
   };
 
@@ -215,13 +183,5 @@ shared persistent actor class McpServer() = self {
   public query func http_request_streaming_callback(token : HttpTypes.StreamingToken) : async ?HttpTypes.StreamingCallbackResponse {
     let ctx : HttpHandler.Context = _create_http_context();
     return HttpHandler.http_request_streaming_callback(ctx, token);
-  };
-
-  system func preupgrade() {
-    stable_http_assets := HttpAssets.preupgrade(http_assets);
-  };
-
-  system func postupgrade() {
-    HttpAssets.postupgrade(http_assets);
   };
 };

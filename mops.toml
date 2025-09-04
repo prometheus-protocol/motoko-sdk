@@ -18,6 +18,8 @@ certified-cache = "0.3.0"
 sha2 = "0.1.6"
 ic = "3.0.0"
 icrc2-types = "1.1.0"
+base16 = "1.0.0"
+vector = "0.4.2"
 
 [dev-dependencies]
 test = "2.1.1"

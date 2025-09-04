@@ -5,8 +5,8 @@ import { obj; str; int; nullable; arr } "mo:json";
 import { test; suite; expect } "mo:test/async";
 
 // The modules we are testing and their dependencies
-import Args "../src/server/Args";
-import Decode "../src/server/Decode";
+import Args "../../src/server/Args";
+import Decode "../../src/server/Decode";
 
 // =================================================================================================
 // HELPER FUNCTIONS FOR TESTING

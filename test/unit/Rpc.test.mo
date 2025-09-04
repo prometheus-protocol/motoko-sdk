@@ -3,8 +3,8 @@ import { obj; str; int; nullable } "mo:json";
 import Text "mo:base/Text";
 
 // Modules to test
-import Rpc "../src/server/Rpc";
-import Types "../src/server/Types";
+import Rpc "../../src/server/Rpc";
+import Types "../../src/server/Types";
 
 // =================================================================================================
 // HELPER FUNCTIONS FOR TESTING

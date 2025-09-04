@@ -5,6 +5,7 @@ import Timer "mo:base/Timer";
 import Result "mo:base/Result";
 import Handler "../server/Handler";
 import AuthTypes "../auth/Types";
+import Beacon "Beacon";
 
 // This file defines the core data structures for the MCP Lifecycle.
 // Based on spec revision: 2025-06-18
@@ -31,6 +32,7 @@ module {
     toolImplementations : [(Text, ToolFn)];
     self : Principal; // The canister's own principal
     allowanceUrl : ?Text; // URL for users to manage their funds/allowance
+    beacon : ?Beacon.BeaconContext; // Optional beacon tracking context
   };
 
   // --- Client Information ---

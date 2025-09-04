@@ -18,6 +18,7 @@ import Types "Types";
 import Decode "Decode";
 import MCPEncode "Encode";
 import Payments "Payments";
+import Beacon "Beacon";
 
 // SDK dependencies for monetization
 import AuthTypes "../auth/Types";
@@ -135,13 +136,30 @@ module {
                   cb(#err({ code = -32601; message = "Tool implementation not found: " # tool.name; data = null }));
                 };
                 case (?fn) {
+                  // Create a helper function to encapsulate the call logic.
+                  let handle_call = func() {
+                    // --- BEACON INTEGRATION POINT ---
+                    switch (config.beacon, auth) {
+                      case (?beaconCtx, ?authInfo) {
+                        // Beacon is configured and this is an authenticated user.
+                        Beacon.track_call(beaconCtx, authInfo.principal, tool.name);
+                      };
+                      case (_, _) {};
+                    };
+                    // --- END BEACON INTEGRATION ---
+
+                    // Now, call the actual tool function.
+                    fn(params.arguments, auth, cb);
+                  };
+
+                  // Use the new handle_call helper.
                   switch (tool.payment) {
-                    case (null) { fn(params.arguments, auth, cb) };
+                    case (null) { handle_call() }; // For free tools
                     case (?paymentInfo) {
                       let paymentResult = await Payments.handlePayment(paymentInfo, config.self, auth, config.allowanceUrl);
                       switch (paymentResult) {
                         case (#ok(_)) {
-                          fn(params.arguments, auth, cb);
+                          handle_call(); // For paid tools after successful payment
                         };
                         case (#err(handlerError)) {
                           // Payment failed. Translate the protocol error into a tool error for the agent.

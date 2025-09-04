@@ -5,11 +5,11 @@ import Text "mo:base/Text";
 import Result "mo:base/Result";
 
 // Modules and dependencies
-import Handler "../src/server/Handler";
-import Args "../src/server/Args";
-import Decode "../src/server/Decode";
-import Encode "../src/server/Encode";
-import AuthTypes "../src/auth/Types";
+import Handler "../../src/server/Handler";
+import Args "../../src/server/Args";
+import Decode "../../src/server/Decode";
+import Encode "../../src/server/Encode";
+import AuthTypes "../../src/auth/Types";
 
 // =================================================================================================
 // TEST SUITE FOR HANDLER FACTORIES

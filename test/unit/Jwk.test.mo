@@ -9,8 +9,8 @@ import Nat "mo:base/Nat";
 import Nat8 "mo:base/Nat8";
 
 // Module to test
-import Jwk "../src/auth/Jwk";
-import Types "../src/auth/Types";
+import Jwk "../../src/auth/Jwk";
+import Types "../../src/auth/Types";
 
 // =================================================================================================
 // HELPER FUNCTIONS FOR TESTING

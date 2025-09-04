@@ -61,9 +61,9 @@ jobs:
       - name: Start dfx
         run: dfx start --background --clean
       - name: Deploy Canisters
-        run: dfx deploy test_paid_mcp_server
+        run: dfx deploy
       - name: Run canister tests
-        run: npm run test:canisters # Using a dedicated script for clarity
+        run: npm run test:canisters
 
   # --- JOB 3: Release (The Final Step) ---
   # This job only runs if the other jobs succeed AND we are on the main branch.

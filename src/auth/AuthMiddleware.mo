@@ -10,6 +10,7 @@ import Buffer "mo:base/Buffer";
 import Debug "mo:base/Debug";
 import Time "mo:base/Time";
 import Float "mo:base/Float";
+import Blob "mo:base/Blob";
 import Jwt "mo:jwt";
 import ECDSA "mo:ecdsa";
 import Sha256 "mo:sha2/Sha256";
@@ -17,9 +18,18 @@ import Utils "../mcp/Utils";
 import Map "mo:map/Map";
 import { thash } "mo:map/Map";
 import BaseX "mo:base-x-encoder";
+import Base16 "mo:base16/Base16";
 
 module {
   // --- Private Helper Functions ---
+  private func _get_api_key(req : HttpTypes.Request) : ?Text {
+    for ((name, value) in req.headers.vals()) {
+      if (Text.toLowercase(name) == "x-api-key") {
+        return ?value;
+      };
+    };
+    return null;
+  };
 
   private func _get_auth_token(req : HttpTypes.Request) : ?Text {
     for ((name, value) in req.headers.vals()) {
@@ -153,8 +163,7 @@ module {
 
   // --- Public Middleware Function ---
 
-  /// Checks the request for a valid JWT and ensures it contains all required scopes.
-  // --- PUBLIC MIDDLEWARE: Now with caching logic ---
+  /// Checks the request for a valid API Key or JWT and ensures it contains all required scopes.
   public func check(
     ctx : Types.AuthContext,
     req : HttpTypes.Request,
@@ -163,52 +172,76 @@ module {
     let thisUrl = Utils.getThisUrl(ctx.self, req, null);
     let metadataUrl = Utils.getThisUrl(ctx.self, req, ?path);
 
-    // 1. Extract the token string.
-    let tokenString = switch (_get_auth_token(req)) {
-      case (?t) { t };
-      case (null) { return #err(_unauthorized(metadataUrl)) };
-    };
+    // --- 2. UNIFIED AUTHENTICATION LOGIC ---
 
-    // --- CACHING LOGIC STARTS HERE ---
+    // --- A. Check for an API Key first (FAST PATH) ---
+    switch (_get_api_key(req)) {
+      case (?api_key_text) {
+        // 1. DECODE the hex string from the header back into its original raw bytes.
+        let raw_key_blob = switch (Base16.decode(api_key_text)) {
+          case (?blob) { blob };
+          case (null) {
+            // The provided key is not valid hex. It cannot possibly match.
+            // We can return an error or hash a known-bad value to ensure the lookup fails.
+            Blob.fromArray([]);
+          };
+        };
 
-    // 2. Hash the token to create a deterministic, fixed-size cache key. (FAST)
-    let tokenHash = Sha256.fromBlob(#sha256, Text.encodeUtf8(tokenString));
+        // 2. Hash the DECODED blob. This now matches the data hashed during creation.
+        let hashed_key_blob = Sha256.fromBlob(#sha256, raw_key_blob);
+        let hashed_key_text : Types.HashedApiKey = Base16.encode(hashed_key_blob);
 
-    let cacheKey = BaseX.toBase64(tokenHash.vals(), #standard({ includePadding = true }));
-
-    // 3. Check the cache for the token hash. (FAST)
-    switch (Map.get(ctx.sessionCache, thash, cacheKey)) {
-      case (?cachedSession) {
-        // --- CACHE HIT: THE FAST PATH ---
-        // 4. Check if the cached session is expired. (FAST)
-        if (Time.now() > cachedSession.expiresAt) {
-          // Expired. Remove it from the cache and proceed to full validation.
-          Map.delete(ctx.sessionCache, thash, cacheKey);
-        } else {
-          // Still valid! We are done. Return the cached info.
-          // This avoids all parsing, crypto, and claim validation.
-          return #ok(cachedSession.authInfo);
+        switch (Map.get(ctx.apiKeys, thash, hashed_key_text)) {
+          case (?key_info) {
+            // Key is valid! Return its associated AuthInfo.
+            return #ok({
+              principal = key_info.principal;
+              scopes = key_info.scopes;
+            });
+          };
+          case (null) {
+            // An invalid API key was provided. Deny access.
+            return #err(_unauthorized(metadataUrl));
+          };
         };
       };
       case (null) {
-        // No action needed, we just proceed to full validation.
-      };
-    };
+        // --- B. No API key found, proceed to JWT validation (EXISTING LOGIC) ---
+        // 1. Extract the token string.
+        let tokenString = switch (_get_auth_token(req)) {
+          case (?t) { t };
+          case (null) { return #err(_unauthorized(metadataUrl)) };
+        };
 
-    // --- CACHE MISS: THE SLOW PATH ---
-    // 5. Perform the full, expensive validation.
-    let validationResult = await _performFullValidation(ctx, tokenString, metadataUrl, thisUrl);
+        // 2. Hash the token to create a cache key.
+        let tokenHash = Sha256.fromBlob(#sha256, Text.encodeUtf8(tokenString));
+        let cacheKey = BaseX.toBase64(tokenHash.vals(), #standard({ includePadding = true }));
 
-    switch (validationResult) {
-      case (#ok(newSession)) {
-        // 6. Validation succeeded. STORE the result in the cache for next time.
-        Map.set(ctx.sessionCache, thash, cacheKey, newSession);
-        // And return the auth info for the current request.
-        return #ok(newSession.authInfo);
-      };
-      case (#err(response)) {
-        // Validation failed. Return the generated error response.
-        return #err(response);
+        // 3. Check the session cache.
+        switch (Map.get(ctx.sessionCache, thash, cacheKey)) {
+          case (?cachedSession) {
+            // CACHE HIT
+            if (Time.now() > cachedSession.expiresAt) {
+              Map.delete(ctx.sessionCache, thash, cacheKey);
+            } else {
+              return #ok(cachedSession.authInfo);
+            };
+          };
+          case (null) {};
+        };
+
+        // CACHE MISS
+        let validationResult = await _performFullValidation(ctx, tokenString, metadataUrl, thisUrl);
+
+        switch (validationResult) {
+          case (#ok(newSession)) {
+            Map.set(ctx.sessionCache, thash, cacheKey, newSession);
+            return #ok(newSession.authInfo);
+          };
+          case (#err(response)) {
+            return #err(response);
+          };
+        };
       };
     };
   };

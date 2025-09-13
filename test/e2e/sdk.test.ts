@@ -126,7 +126,11 @@ describe('MCP Server Compliance via SDK', () => {
       };
 
       // Act: Call the tool using the SDK client.
-      const result = await client.callTool(toolParams);
+      const result = await client.callTool(toolParams) as {
+        isError: boolean;
+        structuredContent: { report: string };
+        content: Array<{ type: string; text: string }>;
+      };
 
       // Assert: Check the structure of the result.
       expect(result).toBeDefined();
@@ -141,7 +145,7 @@ describe('MCP Server Compliance via SDK', () => {
       // This is where we can test our theories about what the client expects.
       expect(Array.isArray(result.content)).toBe(true);
 
-      const contentBlock = result.content![0];
+      const contentBlock = result.content[0];
       expect(contentBlock.type).toBe('text');
 
       // This is the crucial assertion. We expect the 'text' property to be a

@@ -12,6 +12,10 @@
       "type": "motoko",
       "main": "canisters/test_public_mcp_server/src/main.mo"
     },
+    "test_api_key_mcp_server": {
+      "type": "motoko",
+      "main": "canisters/test_api_key_mcp_server/src/main.mo"
+    },
     "test_private_mcp_server": {
       "type": "motoko",
       "main": "canisters/test_private_mcp_server/src/main.mo"

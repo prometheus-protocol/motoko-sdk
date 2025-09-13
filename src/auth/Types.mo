@@ -26,6 +26,26 @@ module {
     response : IC.HttpRequestResult;
   }) -> async IC.HttpRequestResult;
 
+  // The information associated with a single API key.
+  public type ApiKeyInfo = {
+    principal : Principal; // The principal this key acts on behalf of.
+    scopes : [Text]; // The permissions granted by this key.
+    name : Text; // A human-readable name for the key (e.g., "Analytics Service").
+    created : Time.Time; // When the key was created.
+  };
+
+  // A type alias for the SHA-256 hash of an API key.
+  public type HashedApiKey = Text;
+
+  // The main storage for API keys. Maps the hash to its info.
+  public type ApiKeyStore = Map.Map<HashedApiKey, ApiKeyInfo>;
+
+  // The data returned to an admin when listing keys (never includes the raw key).
+  public type ApiKeyMetadata = {
+    hashed_key : HashedApiKey;
+    info : ApiKeyInfo;
+  };
+
   // This is the lightweight object we store in our cache.
   // It contains the validated result and its original expiration.
   public type CachedSession = {
@@ -55,5 +75,10 @@ module {
     self : Principal;
     // The timer ID for the cleanup task.
     var cleanupTimerId : ?Timer.TimerId;
+
+    // The principal authorized to manage API keys.
+    owner : Principal;
+    // The mutable store for API keys.
+    apiKeys : ApiKeyStore;
   };
 };

@@ -11,13 +11,12 @@ import HttpTypes "mo:http-types";
 import Mcp "../../../src/mcp/Mcp";
 import McpTypes "../../../src/mcp/Types";
 import AuthTypes "../../../src/auth/Types";
+import ApiKey "../../../src/auth/ApiKey";
 import AuthCleanup "../../../src/auth/Cleanup";
 import HttpHandler "../../../src/mcp/HttpHandler";
 import SrvTypes "../../../src/server/Types";
 import Cleanup "../../../src/mcp/Cleanup";
 import State "../../../src/mcp/State";
-import Payments "../../../src/mcp/Payments";
-import Beacon "../../../src/mcp/Beacon";
 
 import IC "mo:ic"; // Import the IC module for HTTP requests
 
@@ -25,30 +24,22 @@ import IC "mo:ic"; // Import the IC module for HTTP requests
 import AuthState "../../../src/auth/State";
 import HttpAssets "../../../src/mcp/HttpAssets";
 
-shared ({ caller = deployer }) persistent actor class McpServer(
-  args : ?{
-    beaconCanisterId : Principal;
-    beaconIntervalSec : Nat;
-  }
-) = self {
-
-  let beaconCanisterId : Principal = switch (args) {
-    case (?a) { a.beaconCanisterId };
-    case (null) { Principal.fromText("aaaaa-aa") }; // Default to the public beacon canister
-  };
-  let beaconIntervalSec : ?Nat = switch (args) {
-    case (?a) { ?a.beaconIntervalSec };
-    case (null) { null };
-  };
+shared ({ caller = owner }) persistent actor class McpServer() = self {
 
   // State for certified HTTP assets (like /.well-known/...)
   var stable_http_assets : HttpAssets.StableEntries = [];
   transient let http_assets = HttpAssets.init(stable_http_assets);
 
-  // The application context that holds our state.
-  var appContext : McpTypes.AppContext = State.init([]);
+  // --- STATE (Lives in the main actor) ---
+  var resourceContents = [
+    ("file:///main.py", "print('Hello from main.py!')"),
+    ("file:///README.md", "# MCP Motoko Server"),
+  ];
 
-  let issuerUrl = "https://mock-auth-server.com";
+  // The application context that holds our state.
+  var appContext : McpTypes.AppContext = State.init(resourceContents);
+
+  let issuerUrl = "http://localhost:3001";
   let requiredScopes = ["openid"];
 
   //function to transform the response for jwks client
@@ -64,94 +55,95 @@ shared ({ caller = deployer }) persistent actor class McpServer(
   // Initialize the auth context with the issuer URL and required scopes.
   let authContext : AuthTypes.AuthContext = AuthState.init(
     Principal.fromActor(self),
-    deployer, // Set the owner to the deployer for this example
+    owner,
     issuerUrl,
     requiredScopes,
     transformJwksResponse,
   );
 
-  // Initialize the beacon context
-  let beaconContext : Beacon.BeaconContext = Beacon.init(
-    beaconCanisterId, // Public beacon canister ID
-    beaconIntervalSec, // Send a beacon every 10 seconds
-  );
-
-  // --- Timers ---
+  // --- Cleanup Timers ---
   Cleanup.startCleanupTimer<system>(appContext);
   AuthCleanup.startCleanupTimer<system>(authContext);
-  Beacon.startTimer<system>(beaconContext);
 
-  // --- 3. DEFINE YOUR TOOLS ---
-  var tools : [McpTypes.Tool] = [
+  // --- 1. DEFINE YOUR RESOURCES & TOOLS ---
+  var resources : [McpTypes.Resource] = [
     {
-      name = "get_balance";
-      title = null;
-      description = null;
-      payment = null;
-      inputSchema = Json.obj([]);
-      outputSchema = null;
+      uri = "file:///main.py";
+      name = "main.py";
+      title = ?"Main Python Script";
+      description = ?"Contains the main logic of the application.";
+      mimeType = ?"text/x-python";
     },
     {
-      name = "get_transactions";
-      title = null;
+      uri = "file:///README.md";
+      name = "README.md";
+      title = ?"Project Documentation";
       description = null;
-      payment = null;
-      inputSchema = Json.obj([]);
-      outputSchema = null;
+      mimeType = ?"text/markdown";
     },
   ];
 
-  // --- 4. DEFINE YOUR TOOL LOGIC ---
-  func getBalanceTool(args : McpTypes.JsonValue, auth : ?AuthTypes.AuthInfo, cb : (Result.Result<McpTypes.CallToolResult, McpTypes.HandlerError>) -> ()) {
-    cb(#ok({ content = [#text({ text = "{\"balance\": 100}" })]; isError = false; structuredContent = null }));
+  var tools : [McpTypes.Tool] = [{
+    name = "get_weather";
+    title = ?"Weather Provider";
+    description = ?"Get current weather information for a location";
+    payment = null;
+    inputSchema = Json.obj([
+      ("type", Json.str("object")),
+      ("properties", Json.obj([("location", Json.obj([("type", Json.str("string")), ("description", Json.str("City name or zip code"))]))])),
+      ("required", Json.arr([Json.str("location")])),
+    ]);
+    outputSchema = ?Json.obj([
+      ("type", Json.str("object")),
+      ("properties", Json.obj([("report", Json.obj([("type", Json.str("string")), ("description", Json.str("The textual weather report."))]))])),
+      ("required", Json.arr([Json.str("report")])),
+    ]);
+  }];
+
+  // --- 2. DEFINE YOUR TOOL LOGIC ---
+  func getWeatherTool(args : McpTypes.JsonValue, auth : ?AuthTypes.AuthInfo, cb : (Result.Result<McpTypes.CallToolResult, McpTypes.HandlerError>) -> ()) {
+    let location = switch (Result.toOption(Json.getAsText(args, "location"))) {
+      case (?loc) { loc };
+      case (null) {
+        return cb(#ok({ content = [#text({ text = "Missing 'location' arg." })]; isError = true; structuredContent = null }));
+      };
+    };
+
+    // The human-readable report.
+    let report = "The weather in " # location # " is sunny.";
+
+    // Build the structured JSON payload that matches our outputSchema.
+    let structuredPayload = Json.obj([("report", Json.str(report))]);
+    let stringified = Json.stringify(structuredPayload, null);
+
+    // Return the full, compliant result.
+    cb(#ok({ content = [#text({ text = stringified })]; isError = false; structuredContent = ?structuredPayload }));
   };
 
-  func getTransactionsTool(args : McpTypes.JsonValue, auth : ?AuthTypes.AuthInfo, cb : (Result.Result<McpTypes.CallToolResult, McpTypes.HandlerError>) -> ()) {
-    cb(#ok({ content = [#text({ text = "{\"transactions\": []}" })]; isError = false; structuredContent = null }));
-  };
-
-  // --- 5. CONFIGURE THE SDK ---
+  // --- 3. CONFIGURE THE SDK ---
   transient let mcpConfig : McpTypes.McpConfig = {
     self = Principal.fromActor(self);
-    allowanceUrl = null;
+    allowanceUrl = null; // No payment handling in this public example
     serverInfo = {
-      name = "Beacon-Test-Server";
-      title = "MCP Beacon Test Server";
+      name = "MCP-Motoko-Server";
+      title = "MCP Motoko Reference Server";
       version = "0.1.0";
     };
-    resources = [];
-    resourceReader = func(_) { null };
+    resources = resources;
+    resourceReader = func(uri) {
+      Map.get(appContext.resourceContents, thash, uri);
+    };
     tools = tools;
     toolImplementations = [
-      ("get_balance", getBalanceTool),
-      ("get_transactions", getTransactionsTool),
+      ("get_weather", getWeatherTool),
     ];
-    beacon = ?beaconContext; // Enable beacon tracking
+    beacon = null; // No beacon in this example
   };
 
   // --- 4. CREATE THE SERVER LOGIC ---
   transient let mcpServer = Mcp.createServer(mcpConfig);
 
   // --- PUBLIC ENTRY POINTS ---
-
-  // Treasury
-  public shared func get_treasury_balance(ledger_id : Principal) : async Nat {
-    return await Payments.get_treasury_balance(Principal.fromActor(self), ledger_id);
-  };
-
-  public shared ({ caller }) func withdraw(
-    ledger_id : Principal,
-    amount : Nat,
-    destination : Payments.Destination,
-  ) : async Result.Result<Nat, Payments.TreasuryError> {
-    return await Payments.withdraw(
-      caller,
-      deployer,
-      ledger_id,
-      amount,
-      destination,
-    );
-  };
 
   // Helper to avoid repeating context creation.
   private func _create_http_context() : HttpHandler.Context {
@@ -234,5 +226,22 @@ shared ({ caller = deployer }) persistent actor class McpServer(
 
   system func postupgrade() {
     HttpAssets.postupgrade(http_assets);
+  };
+
+  /**
+   * Creates a new API key for testing purposes. Only the owner can call this.
+   * @param label A human-readable name for the key.
+   * @param principal The principal this key will act on behalf of.
+   * @param scopes The permissions granted to this key.
+   * @returns The raw, unhashed API key. THIS IS THE ONLY TIME IT WILL BE VISIBLE.
+   */
+  public shared (msg) func create_api_key_for_testing(name : Text, principal : Principal, scopes : [Text]) : async Text {
+    return await ApiKey.create_api_key({
+      ctx = authContext;
+      caller = msg.caller;
+      name = name;
+      principal = principal;
+      scopes = scopes;
+    });
   };
 };

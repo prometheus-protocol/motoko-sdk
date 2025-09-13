@@ -31,6 +31,7 @@ module {
       headers = [{ name = "User-Agent"; value = "mcp-motoko-sdk/1.0" }];
       body = null;
       method = #get;
+      is_replicated = null;
       transform = ?{
         function = transformFunc;
         context = Blob.fromArray([]);

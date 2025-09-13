@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/prometheus-protocol/motoko-sdk/compare/v1.4.0...v1.5.0) (2025-09-13)
+
+
+### Features
+
+* allow developers to use and manage api keys ([88fca2f](https://github.com/prometheus-protocol/motoko-sdk/commit/88fca2fd9e1c12012943153fbb441e5cb9c9c652))
+
 # [1.4.0](https://github.com/prometheus-protocol/motoko-sdk/compare/v1.3.0...v1.4.0) (2025-09-04)
 
 

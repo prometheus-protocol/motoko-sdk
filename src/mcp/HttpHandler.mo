@@ -172,19 +172,36 @@ module {
     if (req.method == "GET" and Text.contains(req.url, #text "/.well-known/oauth-protected-resource")) {
       switch (ctx.auth, ctx.http_asset_cache) {
         case (?authCtx, ?cache) {
-          // 1. Generate the content.
-          let bodyBlob = Utils.getResourceMetadataBlob(ctx.self, authCtx, req);
 
-          // 2. Put it in the cache. The library handles hashing and set_certified_data().
-          cache.put(req.url, bodyBlob, null);
+          switch (authCtx.oidc) {
+            case (null) {
+              // OIDC is not configured, so we cannot serve the metadata document.
+              return ?{
+                status_code = 404;
+                headers = [];
+                body = Blob.fromArray([]);
+                upgrade = null;
+                streaming_strategy = null;
+              };
+            };
+            case (?oidcState) {
+              // OIDC is configured, so we can proceed.
 
-          // 3. Return a simple, uncertified 200 OK.
-          return ?{
-            status_code = 200;
-            headers = [("Content-Type", "application/json")];
-            body = bodyBlob;
-            upgrade = null;
-            streaming_strategy = null;
+              // 1. Generate the content.
+              let bodyBlob = Utils.getResourceMetadataBlob(ctx.self, oidcState, req);
+
+              // 2. Put it in the cache. The library handles hashing and set_certified_data().
+              cache.put(req.url, bodyBlob, null);
+
+              // 3. Return a simple, uncertified 200 OK.
+              return ?{
+                status_code = 200;
+                headers = [("Content-Type", "application/json")];
+                body = bodyBlob;
+                upgrade = null;
+                streaming_strategy = null;
+              };
+            };
           };
         };
         case (_, _) { /* Handle error */ };

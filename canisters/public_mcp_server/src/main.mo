@@ -36,7 +36,6 @@ shared persistent actor class McpServer() = self {
       title = ?"Main Python Script";
       description = ?"Contains the main logic of the application.";
       mimeType = ?"text/x-python";
-      payment = null;
     },
     {
       uri = "file:///README.md";
@@ -44,7 +43,6 @@ shared persistent actor class McpServer() = self {
       title = ?"Project Documentation";
       description = null;
       mimeType = ?"text/markdown";
-      payment = null;
     },
   ];
 

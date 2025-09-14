@@ -2,20 +2,64 @@
 
 import Map "mo:map/Map";
 import Types "Types";
-module {
-  // The init function creates a fresh instance of our application's auth state.
-  public func init(self : Principal, owner : Principal, issuerUrl : Text, requiredScopes : [Text], transformJwksResponse : Types.JwksTransformFunc) : Types.AuthContext {
 
-    {
-      self = self; // Store the canister's principal for audience validation
-      owner = owner; // Store the owner principal
-      issuerUrl = issuerUrl;
-      requiredScopes = requiredScopes;
-      jwksCache = Map.new<Text, Map.Map<Text, Types.PublicKeyData>>();
-      transformJwksResponse = transformJwksResponse; // Function to transform JWKS responses
-      sessionCache = Map.new<Text, Types.CachedSession>(); // Cache for validated sessions
-      var cleanupTimerId = null; // No cleanup timer initially
-      apiKeys = Map.new<Types.HashedApiKey, Types.ApiKeyInfo>(); // Initialize empty API key store
+module {
+
+  // --- NEW: Initialize with ONLY OIDC enabled ---
+  public func initOidc(
+    self : Principal,
+    issuerUrl : Text,
+    requiredScopes : [Text],
+    transformJwksResponse : Types.JwksTransformFunc,
+  ) : Types.AuthContext {
+    return {
+      oidc = ?{
+        issuerUrl = issuerUrl;
+        requiredScopes = requiredScopes;
+        jwksCache = Map.new<Text, Map.Map<Text, Types.PublicKeyData>>();
+        sessionCache = Map.new<Text, Types.CachedSession>();
+        transformJwksResponse = transformJwksResponse;
+        self = self;
+      };
+      apiKey = null;
+      var cleanupTimerId = null;
+    };
+  };
+
+  // --- NEW: Initialize with ONLY API Keys enabled ---
+  public func initApiKey(owner : Principal) : Types.AuthContext {
+    return {
+      oidc = null;
+      apiKey = ?{
+        owner = owner;
+        apiKeys = Map.new<Types.HashedApiKey, Types.ApiKeyInfo>();
+      };
+      var cleanupTimerId = null;
+    };
+  };
+
+  // --- NEW: Initialize with BOTH enabled ---
+  public func init(
+    self : Principal,
+    owner : Principal,
+    issuerUrl : Text,
+    requiredScopes : [Text],
+    transformJwksResponse : Types.JwksTransformFunc,
+  ) : Types.AuthContext {
+    return {
+      oidc = ?{
+        issuerUrl = issuerUrl;
+        requiredScopes = requiredScopes;
+        jwksCache = Map.new<Text, Map.Map<Text, Types.PublicKeyData>>();
+        sessionCache = Map.new<Text, Types.CachedSession>();
+        transformJwksResponse = transformJwksResponse;
+        self = self;
+      };
+      apiKey = ?{
+        owner = owner;
+        apiKeys = Map.new<Types.HashedApiKey, Types.ApiKeyInfo>();
+      };
+      var cleanupTimerId = null;
     };
   };
 };

@@ -57,15 +57,15 @@ module {
     };
   };
 
-  private func _fetchAndCacheKeys(ctx : Types.AuthContext) : async ?[(Text, Types.PublicKeyData)] {
-    let metadataUrl = ctx.issuerUrl # "/.well-known/oauth-authorization-server";
+  private func _fetchAndCacheKeys(oidcState : Types.OidcState) : async ?[(Text, Types.PublicKeyData)] {
+    let metadataUrl = oidcState.issuerUrl # "/.well-known/oauth-authorization-server";
 
     let newKeysArray = do ? {
-      let metadataText = Result.toOption(await _http_get(metadataUrl, ctx.transformJwksResponse))!;
+      let metadataText = Result.toOption(await _http_get(metadataUrl, oidcState.transformJwksResponse))!;
       let metadataJson = Result.toOption(Json.parse(metadataText))!;
       let jwksUri = Result.toOption(Json.getAsText(metadataJson, "jwks_uri"))!;
 
-      let jwksText = Result.toOption(await _http_get(jwksUri, ctx.transformJwksResponse))!;
+      let jwksText = Result.toOption(await _http_get(jwksUri, oidcState.transformJwksResponse))!;
       let jwksJson = Result.toOption(Json.parse(jwksText))!;
       let keysArray = Result.toOption(Json.getAsArray(jwksJson, "keys"))!;
 
@@ -79,7 +79,7 @@ module {
       };
 
       // Mutate the context with the new map of keys.
-      Map.set(ctx.jwksCache, thash, ctx.issuerUrl, parsedKeysMap);
+      Map.set(oidcState.jwksCache, thash, oidcState.issuerUrl, parsedKeysMap);
 
       // Convert the map to a sharable array before returning.
       Iter.toArray(Map.entries(parsedKeysMap));
@@ -89,8 +89,8 @@ module {
   };
 
   /// The public function to get a specific public key.
-  public func getPublicKey(ctx : Types.AuthContext, kid : Text) : async ?Types.PublicKeyData {
-    switch (Map.get(ctx.jwksCache, thash, ctx.issuerUrl)) {
+  public func getPublicKey(oidcState : Types.OidcState, kid : Text) : async ?Types.PublicKeyData {
+    switch (Map.get(oidcState.jwksCache, thash, oidcState.issuerUrl)) {
       case (?keys) {
         // Cache hit.
         let cachedPkData = Map.get(keys, thash, kid);
@@ -110,7 +110,7 @@ module {
       };
       case (null) {
         // Cache miss, fetch the keys.
-        switch (await _fetchAndCacheKeys(ctx)) {
+        switch (await _fetchAndCacheKeys(oidcState)) {
           case (?newlyFetchedKeysArray) {
             // We received an array, so we must iterate to find the key.
             for ((keyId, keyData) in newlyFetchedKeysArray.vals()) {

@@ -39,27 +39,8 @@ shared ({ caller = owner }) persistent actor class McpServer() = self {
   // The application context that holds our state.
   var appContext : McpTypes.AppContext = State.init(resourceContents);
 
-  let issuerUrl = "http://localhost:3001";
-  let requiredScopes = ["openid"];
-
-  //function to transform the response for jwks client
-  public query func transformJwksResponse({
-    context : Blob;
-    response : IC.HttpRequestResult;
-  }) : async IC.HttpRequestResult {
-    {
-      response with headers = []; // not intersted in the headers
-    };
-  };
-
   // Initialize the auth context with the issuer URL and required scopes.
-  let authContext : AuthTypes.AuthContext = AuthState.init(
-    Principal.fromActor(self),
-    owner,
-    issuerUrl,
-    requiredScopes,
-    transformJwksResponse,
-  );
+  let authContext : AuthTypes.AuthContext = AuthState.initApiKey(owner);
 
   // --- Cleanup Timers ---
   Cleanup.startCleanupTimer<system>(appContext);
@@ -236,12 +217,6 @@ shared ({ caller = owner }) persistent actor class McpServer() = self {
    * @returns The raw, unhashed API key. THIS IS THE ONLY TIME IT WILL BE VISIBLE.
    */
   public shared (msg) func create_api_key_for_testing(name : Text, principal : Principal, scopes : [Text]) : async Text {
-    return await ApiKey.create_api_key({
-      ctx = authContext;
-      caller = msg.caller;
-      name = name;
-      principal = principal;
-      scopes = scopes;
-    });
+    return await ApiKey.create_api_key(authContext, msg.caller, name, principal, scopes);
   };
 };

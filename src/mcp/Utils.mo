@@ -110,22 +110,22 @@ module {
   // Get json body for resource metadata.
   public func getResourceMetadataBlob(
     self : Principal,
-    authCtx : AuthTypes.AuthContext,
+    oidcState : AuthTypes.OidcState,
     req : HttpTypes.Request,
   ) : Blob {
 
-    let jsonScopes = Encode.array(authCtx.requiredScopes, Json.str);
+    let jsonScopes = Encode.array(oidcState.requiredScopes, Json.str);
 
     // Auth is enabled, so serve the metadata document.
     let bodyJson = Json.obj([
-      ("authorization_servers", Json.arr([Json.str(authCtx.issuerUrl)])),
+      ("authorization_servers", Json.arr([Json.str(oidcState.issuerUrl)])),
       ("resource", Json.str(getThisUrl(self, req, null))),
       ("scopes_supported", jsonScopes),
     ]);
 
-    let stingified = Json.stringify(bodyJson, null);
+    let stringified = Json.stringify(bodyJson, null);
 
-    return Text.encodeUtf8(stingified);
+    return Text.encodeUtf8(stringified);
   };
 
   // A helper function to ensure URIs are stored and looked up consistently.

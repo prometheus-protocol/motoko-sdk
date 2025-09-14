@@ -19,7 +19,6 @@ module {
 
   // The cache will now store this sharable DTO.
   public type JwksKeyCache = Map.Map<Text, Map.Map<Text, PublicKeyData>>;
-  public type JwksKeyCacheEntry = Map.Map<Text, PublicKeyData>;
 
   public type JwksTransformFunc = shared query ({
     context : Blob;
@@ -58,9 +57,8 @@ module {
   // Value: The cached session data.
   public type SessionCache = Map.Map<Text, CachedSession>;
 
-  // A dedicated context for authentication ---
-  // This object holds all the state and configuration needed ONLY for auth.
-  public type AuthContext = {
+  // --- NEW: OIDC-specific state ---
+  public type OidcState = {
     // The configuration for the authentication server.
     issuerUrl : Text;
     // The scopes that are required for any valid token.
@@ -73,12 +71,24 @@ module {
     transformJwksResponse : JwksTransformFunc;
     // This canister's principal, used for audience validation.
     self : Principal;
-    // The timer ID for the cleanup task.
-    var cleanupTimerId : ?Timer.TimerId;
+  };
 
+  // --- NEW: API Key-specific state ---
+  public type ApiKeyState = {
     // The principal authorized to manage API keys.
     owner : Principal;
     // The mutable store for API keys.
     apiKeys : ApiKeyStore;
+  };
+
+  // A dedicated context for authentication ---
+  // This object holds all the state and configuration needed ONLY for auth.
+  public type AuthContext = {
+    // An optional record for OIDC configuration and state.
+    oidc : ?OidcState;
+    // An optional record for API Key configuration and state.
+    apiKey : ?ApiKeyState;
+    // The timer ID for the cleanup task (can be shared or managed separately).
+    var cleanupTimerId : ?Timer.TimerId;
   };
 };

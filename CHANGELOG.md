@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/prometheus-protocol/motoko-sdk/compare/v1.5.0...v1.5.1) (2025-09-14)
+
+
+### Bug Fixes
+
+* give users more control over choosing and configuring auth types ([d880796](https://github.com/prometheus-protocol/motoko-sdk/commit/d880796424629af8a0d442406f47c52afef31bc2))
+
 # [1.5.0](https://github.com/prometheus-protocol/motoko-sdk/compare/v1.4.0...v1.5.0) (2025-09-13)
 
 

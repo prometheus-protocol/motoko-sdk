@@ -1,3 +1,10 @@
+## [1.5.2](https://github.com/prometheus-protocol/motoko-sdk/compare/v1.5.1...v1.5.2) (2025-09-15)
+
+
+### Bug Fixes
+
+* replace owner managed api keys with self service api keys ([fdc86fd](https://github.com/prometheus-protocol/motoko-sdk/commit/fdc86fd006a8f0aa970e3db7be4406e966ab8432))
+
 ## [1.5.1](https://github.com/prometheus-protocol/motoko-sdk/compare/v1.5.0...v1.5.1) (2025-09-14)
 
 

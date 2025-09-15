@@ -131,26 +131,79 @@ Expose a secure method on your canister for the owner to create and manage API k
 import ApiKey "../../../src/auth/ApiKey";
 
 // ... inside your actor class ...
-public shared (msg) func create_api_key(name : Text, principal : Principal, scopes : [Text]) : async Text {
-  // The SDK handles owner checks, key generation, and secure storage of the key's hash.
-  return await ApiKey.create_api_key(authContext, msg.caller, name, principal, scopes);
+public shared (msg) func create_api_key(name : Text, scopes : [Text]) : async Text {
+  // The SDK handles key generation and secure storage of the key's hash.
+  // The key will be associated with the caller's principal.
+  return await ApiKey.create_api_key(authContext, msg.caller, name, msg.caller, scopes);
 };
 ```
 
-#### Step 4: Using the API Key
+#### Step 4: Connecting to Your Server
 
-A client can now authenticate by providing the generated key in the `x-api-key` header.
+The recommended way to test and interact with your secure server is using the **MCP Inspector**. It fully supports the protocol's streaming handshake and custom authentication headers.
 
-```bash
-# 1. Create a key by calling your canister (as the owner)
-dfx canister call MyMcpServer create_api_key '("My Test Key", principal "aaaaa-aa", vec {})'
+1.  **Generate a Key**: Call your canister's `create_api_key` function to get a new key.
+    ```bash
+    dfx canister call mcp_server create_api_key '("My Test Key", vec {})'
+    ```
+2.  **Open the [MCP Inspector](https://github.com/modelcontextprotocol/inspector)**.
+3.  Enter your canister ID in the connection panel.
+4.  Navigate to the **Headers** tab and add a new header:
+    - **Name**: `x-api-key`
+    - **Value**: (Paste the API key you generated in step 1)
+5.  Click **Connect**. The Inspector will handle the handshake and list your available tools.
 
-# 2. Use the returned key to call a tool
-API_KEY="..." # Paste the key from the previous step
-curl -X POST "https://<canister_id>.icp0.io/mcp" \
-     -H "Content-Type: application/json" \
-     -H "x-api-key: $API_KEY" \
-     -d '{"tool": "get_weather", "arguments": {"location": "San Francisco"}}'
+### OIDC / OAuth2 Authentication (Recommended for User-Facing Apps)
+
+For applications where a human user needs to log in via a web frontend, the SDK supports OIDC, a modern identity layer built on top of OAuth2.
+
+#### Step 1: Initialize the Auth Context
+
+Initialize the `AuthContext` in OIDC mode, providing your identity provider's `issuerUrl` and any required scopes.
+
+```motoko
+import AuthState "../../../src/auth/State";
+import AuthTypes "../../../src/auth/Types";
+
+// ... inside your actor class ...
+let issuerUrl = "https://identity.ic0.app"; // Example: Internet Identity
+let requiredScopes = ["openid"];
+
+// A standard transform function required by the IC's HTTP outcalls.
+public query func transform(raw : IC.TransformArgs) : async IC.HttpResponse {
+  { ...raw.response with headers = [] };
+};
+
+let authContext : AuthTypes.AuthContext = AuthState.initOidc(
+  Principal.fromActor(self),
+  issuerUrl,
+  requiredScopes,
+  transform
+);
+```
+
+#### Step 2: The Client-Side Flow
+
+The SDK automatically exposes a `/.well-known/oauth-protected-resource` metadata endpoint. A compliant client-side OIDC library will:
+
+1.  Fetch this endpoint to discover the `issuerUrl`.
+2.  Redirect the user to the issuer to log in (e.g., the Internet Identity login page).
+3.  Receive a JWT (Bearer Token) after a successful login.
+4.  Include this token in the `Authorization: Bearer <token>` header for all subsequent MCP requests.
+
+### Using Both Methods
+
+You can enable both API Key and OIDC authentication simultaneously. The middleware will prioritize an API key if the `x-api-key` header is present; otherwise, it will look for an `Authorization` header.
+
+```motoko
+// Initialize with parameters for both modules
+let authContext : AuthTypes.AuthContext = AuthState.init(
+  Principal.fromActor(self),
+  owner,
+  issuerUrl,
+  requiredScopes,
+  transform
+);
 ```
 
 ## Monetization and Treasury Management
@@ -162,7 +215,7 @@ For tools that require payment, the SDK provides out-of-the-box Treasury functio
 - **`get_treasury_balance(ledger_id)`**: Check the canister's balance of any ICRC-1 token.
 - **`withdraw(ledger_id, amount, destination)`**: Withdraw funds to any account (owner only).
 
-To enable payments, define the `payment` field on a tool and provide an `allowanceUrl` in your `McpConfig`. See the `examples/paid_mcp_server` for a full implementation.
+To enable payments, define the `payment` field on a tool and provide an `allowanceUrl` in your `McpConfig`. See the `canisters/paid_mcp_server` for a full implementation.
 
 ## Proof-of-Use and Usage Mining (Beacon SDK)
 
@@ -209,14 +262,14 @@ To run the full API key example server included in this repository:
 
 1.  Navigate to the example directory:
     ```bash
-    cd examples/api_key_mcp_server
+    cd canisters/api_key_mcp_server
     ```
 2.  Install dependencies and deploy:
     ```bash
     mops install
     dfx deploy
     ```
-3.  Create an API key and connect to the server using [MCP Inspector](https://github.com/modelcontextprotocol/inspector) or `curl`.
+3.  Create an API key and connect to the server using the **MCP Inspector** as described in the authentication section above.
 
 ## Contributing
 

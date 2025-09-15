@@ -1,14 +1,20 @@
 {
-	"servers": {
-		"private-mcp-server-live": {
-			"url": "https://cas54-cqaaa-aaaai-q32na-cai.icp0.io",
-			"type": "http"
-		},
-		"public-mcp-server-live": {
-			"url": "https://dd6u2-wiaaa-aaaai-q32lq-cai.icp0.io",
-			"type": "http"
-		},
-
-	},
-	"inputs": []
+  "servers": {
+    "private-mcp-server-live": {
+      "url": "https://cas54-cqaaa-aaaai-q32na-cai.icp0.io",
+      "type": "http"
+    },
+    "public-mcp-server-live": {
+      "url": "https://dd6u2-wiaaa-aaaai-q32lq-cai.icp0.io",
+      "type": "http"
+    },
+    "local-api-key-server": {
+      "url": "http://localhost:4943/mcp?canisterId=vb2j2-fp777-77774-qaafq-cai",
+      "type": "http",
+      "headers": {
+        "x-api-key": "9a8b9ad1b1b0cfeb4c291447a2c18004e57c26ba7aefa3c672809e56ee7de600"
+      }
+    }
+  },
+  "inputs": []
 }

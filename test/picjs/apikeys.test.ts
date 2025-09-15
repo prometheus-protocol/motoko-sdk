@@ -56,7 +56,6 @@ describe('MCP Server API Key Authentication', () => {
     serverActor.setIdentity(ownerIdentity);
     const apiKey = await serverActor.create_api_key_for_testing(
       'Test Runner Key',
-      userIdentity.getPrincipal(),
       ['test:scope'],
     );
 

@@ -6,7 +6,7 @@
 
 A comprehensive, robust, and developer-friendly SDK for building [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) compliant servers on the Internet Computer using Motoko.
 
-This SDK handles the low-level details of the MCP specification—including routing, protocol compliance, and connection management—allowing you to focus on defining your application's resources, tools, and logic.
+This SDK handles the low-level details of the MCP specification—including routing, authentication, and connection management—allowing you to focus on defining your application's resources, tools, and logic.
 
 ## Live Examples
 
@@ -21,147 +21,210 @@ Connect to it using any MCP client including the [MCP Inspector](https://github.
 
 This SDK is designed to be declarative. You define your server's capabilities by creating records and functions, and then pass them to the SDK to handle the rest.
 
-> **For a complete, runnable example, please see the `test/picjs/paid_mcp_server` directory in this repository.**
+> **For complete, runnable examples, please see the `canisters` directory in this repository.**
 
-### 1. Define Resources and Gated Access
+### 1. Define Resources
 
-Resources are the static content your server provides. The `Mcp.Resource` type itself does not contain any payment information. Instead, you implement a "gated content" model using your `resourceReader` function.
+Resources are the static content your server provides. You define them in an array and provide a `resourceReader` function to serve their content.
 
 ```motoko
-// The resource definition is simple and has no payment info.
-let resources : [Mcp.Resource] = [
+// Define the resources your server offers.
+var resources : [McpTypes.Resource] = [
   {
-    uri = "file:///premium_content.md";
-    name = "premium_content.md";
-    title = ?"Premium Content";
-    description = ?"Exclusive content available after purchase.";
-    mimeType = ?"text/markdown";
+    uri = "file:///main.py";
+    name = "main.py";
+    title = ?"Main Python Script";
+    mimeType = ?"text/x-python";
+    // ...
   },
 ];
 
-// Your resourceReader function acts as the gatekeeper.
-// It checks an Access Control List (ACL) before serving content.
-func resourceReader(uri : Text, caller : Principal) : ?Text {
-  if (hasAccess(caller, uri)) {
-    // User has paid, serve the full content.
-    return getFullContent(uri);
-  } else {
-    // User has not paid, serve a placeholder with instructions.
-    return ?"# Access Denied\n\nTo view this content, please call the 'unlock_resource' tool with this URI.";
-  }
+// Implement a function that reads the content for a given resource URI.
+func resourceReader(uri : Text) : ?Text {
+  // In a real app, you'd read from a more robust data store.
+  return Map.get(appContext.resourceContents, thash, uri);
 };
 ```
 
-### 2. Define a Paid "Unlock" Tool
+### 2. Define Tools
 
-To unlock a gated resource, you create a specific, **paid tool**. This is where the payment details live. This decouples the one-time purchase from repeated, free access.
+Tools are the interactive functions of your server. You define their schema and link them to their implementation.
 
 ```motoko
-let tools : [Mcp.Tool] = [{
-  name = "unlock_resource";
-  title = ?"Unlock Resource";
-  description = ?"Pay to gain permanent access to a protected resource.";
-  inputSchema = Json.obj([("uri", ... )]); // Expects the URI of the resource to unlock
-  outputSchema = null;
-  // The tool is what carries the payment details.
-  payment = ?{
-    amount = 50_000_000;
-    ledger = Principal.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai");
-  };
+// Define the tool's interface, including its name and JSON schemas.
+var tools : [McpTypes.Tool] = [{
+  name = "get_weather";
+  title = ?"Weather Provider";
+  description = ?"Get current weather information for a location";
+  payment = null;
+  inputSchema = Json.obj([("location", ... )]);
+  outputSchema = ?Json.obj([("report", ... )]);
 }];
-```
 
-### 3. Implement the Tool Logic (The Access Control List)
-
-The implementation for your `unlock_resource` tool is where you grant access. After the SDK successfully processes the payment, your logic updates an Access Control List (ACL) in your canister's state.
-
-```motoko
-// State to track who has access to what
-var accessRecords : Map.Map<(Principal, Text), Time.Time> = Map.empty();
-
-func unlockResourceTool(args: Mcp.JsonValue, auth: ?Auth.AuthInfo, cb: ...) {
-  // By the time this code runs, payment has already been successfully processed by the SDK.
-  let caller = auth.caller;
-  let uri = ...; // Parse URI from args
-
-  // Grant access by updating the ACL
-  accessRecords.put((caller, uri), Time.now());
-
-  cb(#ok({
-    content = [#text({ text = "Resource " # uri # " successfully unlocked!" })],
-    ...
-  }));
+// Implement the tool's logic.
+func getWeatherTool(args : McpTypes.JsonValue, auth : ?AuthTypes.AuthInfo, cb : ...) {
+  let location = ...; // Parse location from args
+  let report = "The weather in " # location # " is sunny.";
+  let structuredPayload = Json.obj([("report", Json.str(report))]);
+  cb(#ok({ content = [#text({ text = Json.stringify(structuredPayload) })], ... }));
 };
 ```
 
-### 4. Configure and Create the Server
+### 3. Configure and Create the Server
 
-Finally, you bundle everything into a single `McpConfig` record. To enable payments for tools, you provide an `allowanceUrl` for user-friendly error messages.
+Finally, you bundle everything into a single `McpConfig` record and create the server.
 
 ```motoko
-let mcp_config : Mcp.McpConfig = {
-  serverInfo = { name = "My Paid MCP Server", ... };
+let mcpConfig : McpTypes.McpConfig = {
+  self = Principal.fromActor(self);
+  serverInfo = { name = "My MCP Server", ... };
   resources = resources;
   resourceReader = resourceReader;
   tools = tools;
   toolImplementations = [
-    ("unlock_resource", unlockResourceTool) // Link tool name to its function
+    ("get_weather", getWeatherTool) // Link tool name to its function
   ];
-  // Provide a URL for users to manage their token allowances
-  allowanceUrl = ?"https://principal_id_issuer_frontend_url/";
+  // ... other config
 };
 
-let mcp_server = Mcp.createServer(mcp_config);
+let mcpServer = Mcp.createServer(mcpConfig);
+```
+
+## Authentication
+
+The SDK features a modular authentication layer that can be configured to secure your server. You can enable API Key authentication, OIDC (OAuth2), or both.
+
+### API Key Authentication (Recommended for M2M)
+
+This is the simplest way to secure your server for machine-to-machine communication.
+
+#### Step 1: Initialize the Auth Context
+
+In your main actor, initialize the `AuthContext` in API Key mode, specifying the canister `owner` who will be authorized to manage keys.
+
+```motoko
+import AuthState "../../../src/auth/State";
+import AuthTypes "../../../src/auth/Types";
+
+// ... inside your actor class ...
+let authContext : AuthTypes.AuthContext = AuthState.initApiKey(owner);
+```
+
+#### Step 2: Configure the HTTP Handler
+
+Pass the configured `authContext` to the `HttpHandler` when processing requests. The middleware will automatically reject requests that don't include a valid API key.
+
+```motoko
+private func _create_http_context() : HttpHandler.Context {
+  return {
+    // ... other context fields
+    auth = ?authContext; // Enable authentication
+  };
+};
+```
+
+#### Step 3: Manage API Keys
+
+Expose a secure method on your canister for the owner to create and manage API keys. The SDK provides helpers for this.
+
+```motoko
+import ApiKey "../../../src/auth/ApiKey";
+
+// ... inside your actor class ...
+public shared (msg) func create_api_key(name : Text, scopes : [Text]) : async Text {
+  // The SDK handles key generation and secure storage of the key's hash.
+  // The key will be associated with the caller's principal.
+  return await ApiKey.create_api_key(authContext, msg.caller, name, msg.caller, scopes);
+};
+```
+
+#### Step 4: Connecting to Your Server
+
+The recommended way to test and interact with your secure server is using the **MCP Inspector**. It fully supports the protocol's streaming handshake and custom authentication headers.
+
+1.  **Generate a Key**: Call your canister's `create_api_key` function to get a new key.
+    ```bash
+    dfx canister call mcp_server create_api_key '("My Test Key", vec {})'
+    ```
+2.  **Open the [MCP Inspector](https://github.com/modelcontextprotocol/inspector)**.
+3.  Enter your canister ID in the connection panel.
+4.  Navigate to the **Headers** tab and add a new header:
+    - **Name**: `x-api-key`
+    - **Value**: (Paste the API key you generated in step 1)
+5.  Click **Connect**. The Inspector will handle the handshake and list your available tools.
+
+### OIDC / OAuth2 Authentication (Recommended for User-Facing Apps)
+
+For applications where a human user needs to log in via a web frontend, the SDK supports OIDC, a modern identity layer built on top of OAuth2.
+
+#### Step 1: Initialize the Auth Context
+
+Initialize the `AuthContext` in OIDC mode, providing your identity provider's `issuerUrl` and any required scopes.
+
+```motoko
+import AuthState "../../../src/auth/State";
+import AuthTypes "../../../src/auth/Types";
+
+// ... inside your actor class ...
+let issuerUrl = "https://identity.ic0.app"; // Example: Internet Identity
+let requiredScopes = ["openid"];
+
+// A standard transform function required by the IC's HTTP outcalls.
+public query func transform(raw : IC.TransformArgs) : async IC.HttpResponse {
+  { ...raw.response with headers = [] };
+};
+
+let authContext : AuthTypes.AuthContext = AuthState.initOidc(
+  Principal.fromActor(self),
+  issuerUrl,
+  requiredScopes,
+  transform
+);
+```
+
+#### Step 2: The Client-Side Flow
+
+The SDK automatically exposes a `/.well-known/oauth-protected-resource` metadata endpoint. A compliant client-side OIDC library will:
+
+1.  Fetch this endpoint to discover the `issuerUrl`.
+2.  Redirect the user to the issuer to log in (e.g., the Internet Identity login page).
+3.  Receive a JWT (Bearer Token) after a successful login.
+4.  Include this token in the `Authorization: Bearer <token>` header for all subsequent MCP requests.
+
+### Using Both Methods
+
+You can enable both API Key and OIDC authentication simultaneously. The middleware will prioritize an API key if the `x-api-key` header is present; otherwise, it will look for an `Authorization` header.
+
+```motoko
+// Initialize with parameters for both modules
+let authContext : AuthTypes.AuthContext = AuthState.init(
+  Principal.fromActor(self),
+  owner,
+  issuerUrl,
+  requiredScopes,
+  transform
+);
 ```
 
 ## Monetization and Treasury Management
 
-The SDK provides out-of-the-box Treasury functions to securely manage the funds your canister collects. These functions are automatically exposed on your canister actor.
+For tools that require payment, the SDK provides out-of-the-box Treasury functions to securely manage the funds your canister collects.
 
 - **`get_owner()`**: View the canister's owner.
 - **`set_owner(new_owner)`**: Transfer ownership (owner only).
 - **`get_treasury_balance(ledger_id)`**: Check the canister's balance of any ICRC-1 token.
 - **`withdraw(ledger_id, amount, destination)`**: Withdraw funds to any account (owner only).
 
-```motoko
-// Example: The owner withdrawing 10 tokens (assuming 8 decimals)
-import ICRC1 "mo:icrc1/ledgers";
-
-let myCanister : actor {
-  withdraw : (Principal, Nat, ICRC1.Account) -> async ...;
-  // ...
-} = actor "..."; // Your canister's principal
-
-let destinationAccount = {
-  owner = Principal.fromText("aaaaa-aa");
-  subaccount = null;
-};
-
-// This call would be made by the owner from another canister or via dfx
-await myCanister.withdraw(
-  Principal.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai"), // ledger
-  10 * 100_000_000,                                  // amount
-  destinationAccount                                // destination
-);
-```
+To enable payments, define the `payment` field on a tool and provide an `allowanceUrl` in your `McpConfig`. See the `canisters/paid_mcp_server` for a full implementation.
 
 ## Proof-of-Use and Usage Mining (Beacon SDK)
 
-The SDK includes a built-in "beacon" system to participate in the Prometheus Protocol's "Proof-of-Use" usage mining program. This allows your server to automatically and securely report tool usage statistics, making it eligible for `preMCPT` rewards.
+The SDK includes a built-in "beacon" system to participate in the Prometheus Protocol's "Proof-of-Use" usage mining program. This allows your server to automatically and securely report tool usage statistics, making it eligible for rewards.
 
-The system consists of two parts:
-
-1.  **The `UsageTracker` Canister**: A central, on-chain canister that securely aggregates usage data from all participating MCP servers. Its security model is based on an allowlist of audited Wasm hashes, ensuring that only compliant servers can submit data. The reference implementation can be found in the `canisters/usage_tracker` directory of this repository.
-2.  **The Beacon SDK**: The logic integrated into this SDK. It acts as the "beacon" that periodically sends batched usage reports to the `UsageTracker`.
-
-### Enabling the Beacon
-
-Enabling the beacon is done via a single configuration object in your `McpConfig`. You must declare a stable `BeaconContext` variable in your actor and pass it to the configuration.
+To enable, initialize the `Beacon.Context` as a stable variable and pass it to your `McpConfig`. The SDK automatically tracks every successful, **authenticated** tool call.
 
 ```motoko
 import Beacon "mo:mcp_sdk/beacon";
-import McpTypes "mo:mcp_sdk/Types";
-import Principal "mo:base/Principal";
 
 persistent actor class MyMcpServer {
     // 1. Declare the beacon's state as a stable variable.
@@ -170,82 +233,47 @@ persistent actor class MyMcpServer {
 
     // 2. Configure the beacon in your McpConfig.
     let mcpConfig : McpTypes.McpConfig = {
-        // ... other config (serverInfo, tools, etc.)
+        // ... other config
         beacon = ?beaconContext;
     };
-
-    // 3. The SDK handles the rest.
-    let mcp_server = Mcp.createServer(mcpConfig);
     // ...
 }
 ```
 
-### How it Works
-
-Once enabled, the SDK will **automatically** track every successful, **authenticated** tool call. This is a deliberate security measure to prevent Sybil attacks (spamming public endpoints) and ensure that rewards are distributed based on legitimate user interactions.
-
-You do not need to add any extra `track_call` functions to your tool implementations; the SDK handles it for you.
-
 ## Connection Management
 
-The SDK uses a low-cost `Timer` to automatically clean up stale client connections, preventing memory leaks and keeping hosting costs low. You simply need to start the timer when your canister initializes.
+The SDK uses low-cost timers to automatically clean up stale state, preventing memory leaks and keeping hosting costs low. You should start these timers when your canister initializes.
 
 ```motoko
 // In your main.mo, after setting up your state...
-Cleanup.startCleanupTimer(appCtx);
+import Cleanup "../../../src/mcp/Cleanup";
+import AuthCleanup "../../../src/auth/Cleanup";
+
+// Cleans up stale streaming connections
+Cleanup.startCleanupTimer<system>(appContext);
+
+// Cleans up expired JWT sessions from the cache
+AuthCleanup.startCleanupTimer<system>(authContext);
 ```
 
 ## Running the Example
 
-To run the full example server included in this repository:
+To run the full API key example server included in this repository:
 
 1.  Navigate to the example directory:
     ```bash
-    cd examples/paid_mcp_server
+    cd canisters/api_key_mcp_server
     ```
 2.  Install dependencies and deploy:
     ```bash
     mops install
     dfx deploy
     ```
-3.  Connect to the server using [MCP Inspector](https://github.com/modelcontextprotocol/inspector) or any MCP client.
+3.  Create an API key and connect to the server using the **MCP Inspector** as described in the authentication section above.
 
 ## Contributing
 
-We welcome contributions! To ensure a smooth and automated release process, we adhere to the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification.
-
-### Commit Message Format
-
-Each commit message consists of a **header**, a **body**, and a **footer**. The header has a special format that includes a **type**, a **scope**, and a **subject**:
-
-```
-<type>(<scope>): <subject>
-<BLANK LINE>
-<body>
-<BLANK LINE>
-<footer>
-```
-
-#### Type
-
-Must be one of the following:
-
-- **feat**: A new feature
-- **fix**: A bug fix
-- **docs**: Documentation only changes
-- **style**: Changes that do not affect the meaning of the code (white-space, formatting, etc)
-- **refactor**: A code change that neither fixes a bug nor adds a feature
-- **perf**: A code change that improves performance
-- **test**: Adding missing tests or correcting existing tests
-- **chore**: Changes to the build process or auxiliary tools and libraries such as documentation generation
-
-#### Example
-
-```
-feat(payments): add support for ICRC-2 token payments for tools
-```
-
-Committing with this format allows us to automatically generate changelogs and determine the next version number for releases.
+We welcome contributions! To ensure a smooth and automated release process, we adhere to the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification. Please see the contribution guidelines at the end of this document.
 
 ## License
 

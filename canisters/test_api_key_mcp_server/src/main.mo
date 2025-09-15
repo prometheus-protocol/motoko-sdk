@@ -216,7 +216,7 @@ shared ({ caller = owner }) persistent actor class McpServer() = self {
    * @param scopes The permissions granted to this key.
    * @returns The raw, unhashed API key. THIS IS THE ONLY TIME IT WILL BE VISIBLE.
    */
-  public shared (msg) func create_api_key_for_testing(name : Text, principal : Principal, scopes : [Text]) : async Text {
-    return await ApiKey.create_api_key(authContext, msg.caller, name, principal, scopes);
+  public shared (msg) func create_api_key_for_testing(name : Text, scopes : [Text]) : async Text {
+    return await ApiKey.create_my_api_key(authContext, msg.caller, name, scopes);
   };
 };

@@ -1,6 +1,6 @@
 // src/mcp/ApiKey.mo
 
-import Types "Types"; // Ensure this path is correct
+import Types "Types";
 import Base16 "mo:base16/Base16";
 import Sha256 "mo:sha2/Sha256";
 import Random "mo:base/Random";
@@ -14,93 +14,84 @@ import Blob "mo:base/Blob";
 module {
 
   // --- Private Helper: Safely get the ApiKeyState ---
-  // This helper reduces boilerplate and ensures consistent error handling.
+  // This helper is unchanged and remains good practice.
   private func _getApiState(ctx : Types.AuthContext) : Types.ApiKeyState {
     switch (ctx.apiKey) {
-      case (?state) {
-        // The module is enabled, return its state.
-        return state;
-      };
-      case (null) {
-        // The module is not configured. This is a fatal error for any API key operation.
-        Debug.trap("Error: API Key module is not enabled for this canister.");
-      };
+      case (?state) { return state };
+      case (null) { Debug.trap("Error: API Key module is not enabled.") };
     };
   };
 
-  // --- CREATE API KEY (Update Method) ---
-  // Generates a new key, stores its hash, and returns the raw key ONCE.
-  public func create_api_key(
+  // =================================================================================================
+  // NEW: SELF-SERVICE FUNCTIONS (For any authenticated user)
+  // =================================================================================================
+
+  // --- CREATE MY API KEY (Update Method) ---
+  // Allows any caller to create an API key for their own Principal.
+  public func create_my_api_key(
     ctx : Types.AuthContext,
     caller : Principal,
     name : Text,
-    principal : Principal,
     scopes : [Text],
   ) : async Text {
-    // 1. Get the specific state for the API key module. This will trap if not enabled.
     let apiState = _getApiState(ctx);
 
-    // 2. Perform the owner check using the state from the module.
-    if (caller != apiState.owner) {
-      Debug.trap("Unauthorized: Only the owner can create API keys.");
-    };
+    // No owner check is needed. Any user can create a key for themselves.
 
-    // 3. Generate a secure, random 32-byte key.
     let raw_key_blob : Blob = await Random.blob();
     let raw_key_text = Base16.encode(raw_key_blob);
 
-    // 4. Hash the raw key for storage.
     let hashed_key_blob = Sha256.fromBlob(#sha256, raw_key_blob);
     let hashed_key_text : Types.HashedApiKey = Base16.encode(hashed_key_blob);
 
-    // 5. Create the info record.
     let key_info : Types.ApiKeyInfo = {
-      principal = principal;
+      // CRITICAL: The principal is always the caller, preventing impersonation.
+      principal = caller;
       scopes = scopes;
       name = name;
       created = Time.now();
     };
 
-    // 6. Store the HASH in the module's state.
     Map.set(apiState.apiKeys, Map.thash, hashed_key_text, key_info);
 
-    // 7. Return the PLAINTEXT key to the admin.
     return raw_key_text;
   };
 
-  // --- LIST API KEYS (Query Method) ---
-  // Securely lists metadata about existing keys.
-  public func list_api_keys(ctx : Types.AuthContext, caller : Principal) : [Types.ApiKeyMetadata] {
-    // 1. Get the specific state for the API key module.
+  // --- LIST MY API KEYS (Query Method) ---
+  // Allows any caller to list the metadata for keys they own.
+  public func list_my_api_keys(ctx : Types.AuthContext, caller : Principal) : [Types.ApiKeyMetadata] {
     let apiState = _getApiState(ctx);
 
-    // 2. Perform the owner check.
-    if (caller != apiState.owner) {
-      Debug.trap("Unauthorized: Only the owner can list API keys.");
-    };
-
-    // 3. Iterate over the map in the module's state.
     var metadata : [Types.ApiKeyMetadata] = [];
     for ((hash, info) in Map.entries(apiState.apiKeys)) {
-      metadata := Array.append(metadata, [{ hashed_key = hash; info = info }]);
+      // CRITICAL: Only return keys where the principal matches the caller.
+      if (info.principal == caller) {
+        metadata := Array.append(metadata, [{ hashed_key = hash; info = info }]);
+      };
     };
     return metadata;
   };
 
-  // --- REVOKE API KEY (Update Method) ---
-  public func revoke_api_key(ctx : Types.AuthContext, caller : Principal, hashed_key : Types.HashedApiKey) {
-    // 1. Get the specific state for the API key module.
+  // --- REVOKE MY API KEY (Update Method) ---
+  // Allows any caller to revoke an API key that they own.
+  public func revoke_my_api_key(ctx : Types.AuthContext, caller : Principal, hashed_key : Types.HashedApiKey) {
     let apiState = _getApiState(ctx);
 
-    // 2. Perform the owner check.
-    if (caller != apiState.owner) {
-      Debug.trap("Unauthorized: Only the owner can revoke API keys.");
-    };
+    // 1. First, get the key's info to check for ownership.
+    switch (Map.get(apiState.apiKeys, Map.thash, hashed_key)) {
+      case (?key_info) {
+        // 2. CRITICAL: Verify the caller owns this specific key before revoking.
+        if (key_info.principal != caller) {
+          Debug.trap("Unauthorized: You can only revoke your own API keys.");
+        };
 
-    // 3. Remove the key from the map in the module's state.
-    let removed = Map.remove(apiState.apiKeys, Map.thash, hashed_key);
-    if (removed == null) {
-      Debug.print("Warning: Attempted to revoke a non-existent API key: " # hashed_key);
+        // 3. If ownership is confirmed, remove the key.
+        ignore Map.remove(apiState.apiKeys, Map.thash, hashed_key);
+      };
+      case (null) {
+        // Key doesn't exist, do nothing.
+        Debug.print("Warning: Attempted to revoke a non-existent API key: " # hashed_key);
+      };
     };
   };
 };

@@ -21,7 +21,7 @@ module {
     args : JsonValue,
     auth : ?AuthTypes.AuthInfo,
     cb : (Result.Result<CallToolResult, Handler.HandlerError>) -> (),
-  ) -> ();
+  ) -> async ();
 
   // The configuration record the developer will provide.
   public type McpConfig = {

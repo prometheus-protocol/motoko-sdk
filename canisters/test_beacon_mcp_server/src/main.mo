@@ -102,11 +102,11 @@ shared ({ caller = deployer }) persistent actor class McpServer(
   ];
 
   // --- 4. DEFINE YOUR TOOL LOGIC ---
-  func getBalanceTool(args : McpTypes.JsonValue, auth : ?AuthTypes.AuthInfo, cb : (Result.Result<McpTypes.CallToolResult, McpTypes.HandlerError>) -> ()) {
+  func getBalanceTool(args : McpTypes.JsonValue, auth : ?AuthTypes.AuthInfo, cb : (Result.Result<McpTypes.CallToolResult, McpTypes.HandlerError>) -> ()) : async {
     cb(#ok({ content = [#text({ text = "{\"balance\": 100}" })]; isError = false; structuredContent = null }));
   };
 
-  func getTransactionsTool(args : McpTypes.JsonValue, auth : ?AuthTypes.AuthInfo, cb : (Result.Result<McpTypes.CallToolResult, McpTypes.HandlerError>) -> ()) {
+  func getTransactionsTool(args : McpTypes.JsonValue, auth : ?AuthTypes.AuthInfo, cb : (Result.Result<McpTypes.CallToolResult, McpTypes.HandlerError>) -> ()) : async {
     cb(#ok({ content = [#text({ text = "{\"transactions\": []}" })]; isError = false; structuredContent = null }));
   };
 

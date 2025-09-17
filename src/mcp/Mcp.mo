@@ -7,6 +7,7 @@ import Principal "mo:base/Principal";
 import Debug "mo:base/Debug";
 import ICRC2 "mo:icrc2-types";
 import Error "mo:base/Error";
+import Option "mo:base/Option";
 
 // Internal SDK imports
 import Server "../server/Server";
@@ -137,29 +138,29 @@ module {
                 };
                 case (?fn) {
                   // Create a helper function to encapsulate the call logic.
-                  let handle_call = func() {
+                  let handle_call = func() : async () {
                     // --- BEACON INTEGRATION POINT ---
-                    switch (config.beacon, auth) {
-                      case (?beaconCtx, ?authInfo) {
-                        // Beacon is configured and this is an authenticated user.
-                        Beacon.track_call(beaconCtx, authInfo.principal, tool.name);
+                    switch (config.beacon) {
+                      case (?beaconCtx) {
+                        let principal = Option.get(do ? { auth!.principal }, Principal.fromText("aaaaa-aa"));
+                        Beacon.track_call(beaconCtx, principal, tool.name);
                       };
-                      case (_, _) {};
+                      case (_) {};
                     };
                     // --- END BEACON INTEGRATION ---
 
                     // Now, call the actual tool function.
-                    fn(params.arguments, auth, cb);
+                    await fn(params.arguments, auth, cb);
                   };
 
                   // Use the new handle_call helper.
                   switch (tool.payment) {
-                    case (null) { handle_call() }; // For free tools
+                    case (null) { await handle_call() }; // For free tools
                     case (?paymentInfo) {
                       let paymentResult = await Payments.handlePayment(paymentInfo, config.self, auth, config.allowanceUrl);
                       switch (paymentResult) {
                         case (#ok(_)) {
-                          handle_call(); // For paid tools after successful payment
+                          await handle_call(); // For paid tools after successful payment
                         };
                         case (#err(handlerError)) {
                           // Payment failed. Translate the protocol error into a tool error for the agent.

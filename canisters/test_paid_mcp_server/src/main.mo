@@ -135,7 +135,7 @@ shared ({ caller = deployer }) persistent actor class McpServer(
   // --- 2. DEFINE YOUR TOOL LOGIC ---
   // This is the function that executes when the tool is called.
 
-  func generateImageTool(args : McpTypes.JsonValue, auth : ?AuthTypes.AuthInfo, cb : (Result.Result<McpTypes.CallToolResult, McpTypes.HandlerError>) -> ()) {
+  func generateImageTool(args : McpTypes.JsonValue, auth : ?AuthTypes.AuthInfo, cb : (Result.Result<McpTypes.CallToolResult, McpTypes.HandlerError>) -> ()) : async () {
     // MODIFIED: Get the 'prompt' argument instead of 'location'.
     let prompt = switch (Result.toOption(Json.getAsText(args, "prompt"))) {
       case (?p) { p };

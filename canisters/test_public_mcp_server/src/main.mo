@@ -64,7 +64,7 @@ shared persistent actor class McpServer() = self {
   }];
 
   // --- 2. DEFINE YOUR TOOL LOGIC ---
-  func getWeatherTool(args : McpTypes.JsonValue, auth : ?AuthTypes.AuthInfo, cb : (Result.Result<McpTypes.CallToolResult, McpTypes.HandlerError>) -> ()) {
+  func getWeatherTool(args : McpTypes.JsonValue, auth : ?AuthTypes.AuthInfo, cb : (Result.Result<McpTypes.CallToolResult, McpTypes.HandlerError>) -> ()) : async () {
     let location = switch (Result.toOption(Json.getAsText(args, "location"))) {
       case (?loc) { loc };
       case (null) {

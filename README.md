@@ -8,6 +8,8 @@ A comprehensive, robust, and developer-friendly SDK for building [Model Context 
 
 This SDK handles the low-level details of the MCP specification—including routing, authentication, and connection management—allowing you to focus on defining your application's resources, tools, and logic.
 
+https://prometheusprotocol.org
+
 ## Live Examples
 
 Check out the live example servers running on the Internet Computer:

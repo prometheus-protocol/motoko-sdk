@@ -1,3 +1,10 @@
+## [2.0.1](https://github.com/prometheus-protocol/motoko-sdk/compare/v2.0.0...v2.0.1) (2025-09-18)
+
+
+### Bug Fixes
+
+* add mcp path to resource string ([6bb034a](https://github.com/prometheus-protocol/motoko-sdk/commit/6bb034a5ae7fe44e82aea7bdde1eca1ae868c295))
+
 # [2.0.0](https://github.com/prometheus-protocol/motoko-sdk/compare/v1.5.2...v2.0.0) (2025-09-18)
 
 

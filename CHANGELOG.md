@@ -1,3 +1,10 @@
+## [2.0.2](https://github.com/prometheus-protocol/motoko-sdk/compare/v2.0.1...v2.0.2) (2025-09-18)
+
+
+### Bug Fixes
+
+* add mcp url to aud check ([30e28b3](https://github.com/prometheus-protocol/motoko-sdk/commit/30e28b316598d5f3d1a8cb3b567bb952b19a7928))
+
 ## [2.0.1](https://github.com/prometheus-protocol/motoko-sdk/compare/v2.0.0...v2.0.1) (2025-09-18)
 
 

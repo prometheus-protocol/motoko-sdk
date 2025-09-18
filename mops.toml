@@ -1,6 +1,6 @@
 [package]
 name = "mcp-motoko-sdk"
-version = "2.0.1"
+version = "2.0.2"
 description = "Interact with the Model Context Protocol using the Motoko programming language"
 repository = "https://github.com/prometheus-protocol/motoko-sdk"
 keywords = ["ai", "mcp", "oauth"]

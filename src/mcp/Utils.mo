@@ -110,6 +110,7 @@ module {
   // Get json body for resource metadata.
   public func getResourceMetadataBlob(
     self : Principal,
+    mcpPath : Text,
     oidcState : AuthTypes.OidcState,
     req : HttpTypes.Request,
   ) : Blob {
@@ -119,7 +120,7 @@ module {
     // Auth is enabled, so serve the metadata document.
     let bodyJson = Json.obj([
       ("authorization_servers", Json.arr([Json.str(oidcState.issuerUrl)])),
-      ("resource", Json.str(getThisUrl(self, req, null))),
+      ("resource", Json.str(getThisUrl(self, req, ?mcpPath))),
       ("scopes_supported", jsonScopes),
     ]);
 

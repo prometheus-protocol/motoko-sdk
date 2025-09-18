@@ -1,3 +1,13 @@
+# [2.0.0](https://github.com/prometheus-protocol/motoko-sdk/compare/v1.5.2...v2.0.0) (2025-09-18)
+
+
+* BREAKING CHANGE: Trigger major release ([9500b22](https://github.com/prometheus-protocol/motoko-sdk/commit/9500b22848097cb72579aa52900ef7087e5b50d4))
+
+
+### BREAKING CHANGES
+
+* Trigger major release
+
 ## [1.5.2](https://github.com/prometheus-protocol/motoko-sdk/compare/v1.5.1...v1.5.2) (2025-09-15)
 
 

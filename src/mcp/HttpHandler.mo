@@ -188,7 +188,8 @@ module {
               // OIDC is configured, so we can proceed.
 
               // 1. Generate the content.
-              let bodyBlob = Utils.getResourceMetadataBlob(ctx.self, oidcState, req);
+              let mcpPath = Option.get(ctx.mcp_path, "/mcp");
+              let bodyBlob = Utils.getResourceMetadataBlob(ctx.self, mcpPath, oidcState, req);
 
               // 2. Put it in the cache. The library handles hashing and set_certified_data().
               cache.put(req.url, bodyBlob, null);

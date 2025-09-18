@@ -221,7 +221,7 @@ module {
       case (?authCtx) {
         // --- AUTH IS ON ---
         // 1. Run the authentication check first.
-        let authResult = await AuthMiddleware.check(authCtx, req);
+        let authResult = await AuthMiddleware.check(authCtx, req, mcpUrl);
 
         // 2. Handle the result of the check.
         switch (authResult) {

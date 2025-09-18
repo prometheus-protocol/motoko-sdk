@@ -119,6 +119,8 @@ module {
     let verificationKey = #ecdsa(publicKeyObject);
 
     // 5. Define validation options and validate the token.
+    Debug.print("Validating JWT...");
+    Debug.print("audience: " # thisUrl);
     let validationOptions : Jwt.ValidationOptions = {
       expiration = true;
       notBefore = true;
@@ -182,6 +184,7 @@ module {
   public func check(
     ctx : Types.AuthContext,
     req : HttpTypes.Request,
+    mcpUrl : Text,
   ) : async Result.Result<Types.AuthInfo, HttpTypes.Response> {
     // --- 1. EXTRACT CREDENTIALS FROM REQUEST ---
     // We support two authentication methods:
@@ -252,7 +255,7 @@ module {
 
             // CACHE MISS: Perform full validation using the OIDC state.
             let path = "/.well-known/oauth-protected-resource";
-            let thisUrl = Utils.getThisUrl(oidcState.self, req, null);
+            let thisUrl = Utils.getThisUrl(oidcState.self, req, ?mcpUrl);
             let metadataUrl = Utils.getThisUrl(oidcState.self, req, ?path);
 
             let validationResult = await _performFullValidation(oidcState, tokenString, metadataUrl, thisUrl);

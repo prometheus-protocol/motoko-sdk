@@ -15,7 +15,7 @@ const mockAuthServerUrl = process.env.E2E_MOCK_AUTH_SERVER_URL!;
 let jwtPrivateKey: jose.CryptoKey;
 
 const mcpPath = '/mcp';
-const resourceServerUrl = new URL(replicaUrl);
+const resourceServerUrl = new URL(mcpPath, replicaUrl);
 resourceServerUrl.searchParams.set('canisterId', canisterId);
 
 describe('MCP Authentication and Discovery', () => {

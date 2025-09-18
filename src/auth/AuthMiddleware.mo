@@ -119,6 +119,8 @@ module {
     let verificationKey = #ecdsa(publicKeyObject);
 
     // 5. Define validation options and validate the token.
+    Debug.print("Validating JWT...");
+    Debug.print("audience: " # thisUrl);
     let validationOptions : Jwt.ValidationOptions = {
       expiration = true;
       notBefore = true;

@@ -42,6 +42,7 @@ const trackerAdminIdentity: Identity = createIdentity('tracker-admin');
 const MOCK_ISSUER_URL = 'https://mock-auth-server.com';
 const MOCK_KID = 'test-key-2025';
 const BEACON_INTERVAL_S = 10;
+const mcpUrl = '/mcp';
 
 describe('MCP Server Beacon SDK via HTTP Gateway', () => {
   let pic: PocketIc;
@@ -107,7 +108,7 @@ describe('MCP Server Beacon SDK via HTTP Gateway', () => {
     const MOCK_DISCOVERY_URL = `${MOCK_ISSUER_URL}/.well-known/oauth-authorization-server`;
 
     // 1. Create the JWT.
-    const resourceServerUrl = new URL('http://127.0.0.1:4943');
+    const resourceServerUrl = new URL(mcpUrl, 'http://127.0.0.1:4943');
     resourceServerUrl.searchParams.set('canisterId', serverCanisterId.toText());
     const token = await new jose.SignJWT({ scope: 'openid' })
       .setProtectedHeader({ alg: 'ES256', kid: MOCK_KID })
